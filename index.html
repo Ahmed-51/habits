@@ -1,0 +1,2045 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Habit Tracker</title>
+<style>
+/* ============================================================
+   THEME
+   ============================================================ */
+:root{
+  --bg:#0e1014;
+  --panel:#161a21;
+  --panel-2:#1b2029;
+  --line:#272d38;
+  --line-soft:#1f242d;
+  --txt:#e7eaf0;
+  --dim:#8b94a6;
+  --dimmer:#5b6373;
+  --accent:#3987e5;
+  --empty:#212632;
+  --grid:#2c2c2a;
+  --good:hsl(140 76% 55%);          /* the full-battery green */
+  --shadow:0 8px 28px rgba(0,0,0,.45);
+  --radius:14px;
+}
+:root[data-theme="light"]{
+  --bg:#f4f5f8;
+  --panel:#ffffff;
+  --panel-2:#f7f8fb;
+  --line:#e2e5ec;
+  --line-soft:#eceff4;
+  --txt:#0b0b0b;
+  --dim:#52514e;
+  --dimmer:#a3aab8;
+  --accent:#2a78d6;
+  --empty:#e6e9f0;
+  --grid:#e1e0d9;
+  --good:hsl(140 82% 30%);          /* same hue, stepped down to stay legible on white */
+  --shadow:0 6px 22px rgba(20,25,40,.10);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--txt);
+  font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;cursor:pointer}
+input{font:inherit;color:inherit}
+
+/* ============================================================
+   SHELL
+   ============================================================ */
+.app{max-width:1400px;margin:0 auto;padding:0 20px 48px}
+
+header.top{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:14px 0;margin-bottom:18px;
+  border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:20;
+  background:var(--bg);
+}
+.brand{font-size:16px;font-weight:650;letter-spacing:-.2px;margin-right:auto;white-space:nowrap}
+
+/* navbar stat pair */
+.navstats{display:flex;align-items:center;gap:18px;padding-right:4px}
+.ns{display:flex;align-items:baseline;gap:5px;white-space:nowrap}
+.ns b{font-size:17px;font-weight:700;letter-spacing:-.4px}
+.ns span{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.ns.big b{font-size:27px;letter-spacing:-1px;line-height:1}
+.ns.hot b{color:var(--good);text-shadow:0 0 18px color-mix(in srgb,var(--good) 40%,transparent)}
+.ns.hot span{color:var(--good);opacity:.8}
+
+.monthnav{display:flex;align-items:center;gap:4px}
+.monthnav .label{
+  min-width:162px;text-align:center;font-size:15px;font-weight:600;
+  letter-spacing:-.2px;font-variant-numeric:tabular-nums;
+}
+.actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+
+.btn{
+  background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  padding:7px 12px;font-size:13px;font-weight:500;white-space:nowrap;
+  transition:background .14s,border-color .14s,transform .08s;
+}
+.btn:hover{background:var(--panel-2);border-color:var(--dimmer)}
+.btn:active{transform:translateY(1px)}
+.btn.icon{padding:7px 10px;min-width:34px;text-align:center}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08);background:var(--accent)}
+.btn:disabled{opacity:.45;cursor:default;transform:none}
+.btn:disabled:hover{background:var(--panel);border-color:var(--line)}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;align-items:start}
+@media (max-width:980px){ main{grid-template-columns:1fr} }
+
+.card{
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);box-shadow:var(--shadow);
+}
+.card-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.card-head h2{margin:0;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+.card-head .spacer{margin-left:auto}
+.headnum{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.headnum em{font-style:normal;font-size:10.5px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-left:4px}
+
+/* ============================================================
+   SHEET (month grid) — no inner scroll, the page scrolls
+   ============================================================ */
+table.sheet{border-collapse:separate;border-spacing:0;width:100%;font-variant-numeric:tabular-nums}
+table.sheet thead th{
+  background:var(--panel);border-bottom:1px solid var(--line);
+  padding:9px 6px;font-size:11px;font-weight:600;color:var(--dim);
+  text-align:center;vertical-align:bottom;
+}
+table.sheet thead th.h-day{text-align:left;padding-left:14px;width:44px}
+table.sheet thead th.h-dow{width:52px}
+table.sheet thead th.h-bar{width:64px}
+table.sheet thead th.h-habit{min-width:52px}
+.hname{display:block;line-height:1.2;word-break:break-word;color:var(--txt);font-weight:600;font-size:11.5px}
+.hdot{display:block;width:100%;height:3px;border-radius:2px;margin-top:6px}
+
+table.sheet tbody td{border-bottom:1px solid var(--line-soft);padding:0;height:29px;text-align:center}
+tbody tr.weekend td{background:color-mix(in srgb,var(--panel-2) 60%,transparent)}
+tbody tr.today td{background:color-mix(in srgb,var(--accent) 11%,transparent)}
+tbody tr.sel td{box-shadow:inset 0 0 0 9999px color-mix(in srgb,var(--accent) 7%,transparent)}
+tbody tr.future{opacity:.42}
+
+td.c-day{text-align:left;padding-left:14px;font-weight:600;font-size:12.5px;cursor:pointer;position:relative;white-space:nowrap}
+td.c-dow{font-size:11px;color:var(--dim);white-space:nowrap}
+td.c-dow.is-today{color:var(--accent);font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
+tbody tr.sel td.c-day::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+
+.cell{width:100%;height:29px;display:block;border:0;background:transparent;position:relative;padding:0}
+.cell::after{
+  content:"";position:absolute;inset:5px;border-radius:5px;border:1.5px solid var(--empty);
+  transition:background .16s,border-color .16s,transform .12s;
+}
+.cell:hover::after{border-color:var(--dimmer)}
+.cell.on::after{background:var(--hc);border-color:var(--hc);transform:scale(1.04)}
+.cell.on::before{
+  content:"";position:absolute;inset:0;margin:auto;width:7px;height:4px;
+  border-left:2px solid #fff;border-bottom:2px solid #fff;
+  transform:rotate(-45deg) translate(1px,-1px);z-index:1;
+}
+
+.daybar{width:48px;height:6px;border-radius:3px;background:var(--empty);overflow:hidden;margin:0 auto}
+.daybar i{display:block;height:100%;border-radius:3px;transition:width .25s}
+
+tfoot td{border-top:1px solid var(--line);padding:9px 4px;font-size:11px;color:var(--dim);text-align:center;font-weight:600}
+tfoot td.c-day{padding-left:14px;text-transform:uppercase;letter-spacing:.05em;font-size:10px}
+
+/* ============================================================
+   RIGHT PANEL
+   ============================================================ */
+aside{display:flex;flex-direction:column;gap:16px;position:sticky;top:74px}
+
+.daypick{padding:14px 16px 4px;text-align:center}
+.daypick .big{font-size:15px;font-weight:650;letter-spacing:-.2px}
+.daypick .sub{font-size:11.5px;color:var(--dim);margin-top:2px}
+
+/* --- battery --- */
+.batwrap{display:flex;justify-content:center;padding:14px 16px 4px}
+.battery{width:132px;position:relative;user-select:none}
+.bat-cap{width:46px;height:11px;margin:0 auto;background:var(--line);border-radius:5px 5px 2px 2px;transition:background .3s}
+.battery.live .bat-cap{background:var(--fill)}
+.bat-body{
+  border:3px solid var(--line);border-radius:14px;height:322px;padding:7px;margin-top:3px;
+  position:relative;transition:border-color .3s,box-shadow .4s;
+  background:color-mix(in srgb,var(--empty) 45%,transparent);
+}
+.battery.live .bat-body{border-color:var(--fill)}
+.battery.full .bat-body{box-shadow:0 0 0 4px color-mix(in srgb,var(--fill) 22%,transparent),0 0 34px color-mix(in srgb,var(--fill) 40%,transparent)}
+.segs{display:flex;flex-direction:column-reverse;gap:5px;height:100%}
+.seg{
+  flex:1;border-radius:6px;background:var(--empty);min-height:6px;cursor:pointer;
+  transition:background .3s cubic-bezier(.3,1.4,.5,1),box-shadow .3s,transform .3s cubic-bezier(.3,1.5,.5,1);
+}
+.seg:hover{box-shadow:inset 0 0 0 1.5px var(--dimmer)}
+.seg.on{background:var(--fill);box-shadow:0 0 12px -2px color-mix(in srgb,var(--fill) 65%,transparent)}
+.seg.pop{transform:scaleX(1.06)}
+.bat-read{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.55);
+}
+:root[data-theme="light"] .bat-read{text-shadow:0 1px 8px rgba(255,255,255,.85)}
+.bat-read .pct{font-size:38px;font-weight:700;letter-spacing:-1.5px;line-height:1}
+.bat-read .frac{font-size:12px;color:var(--dim);margin-top:5px;font-weight:600}
+.battery.empty .bat-read .pct{color:var(--dimmer)}
+
+.fillbtn{
+  margin:12px 16px 16px;padding:12px;border-radius:11px;
+  border:1px solid var(--accent);background:var(--accent);color:#fff;
+  font-size:13.5px;font-weight:600;display:block;width:calc(100% - 32px);
+  transition:filter .15s,transform .08s;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.fillbtn:hover{filter:brightness(1.09)}
+.fillbtn:active{transform:translateY(1px)}
+.fillbtn.clear{background:transparent;color:var(--txt);border-color:var(--line)}
+.fillbtn.clear:hover{background:var(--panel-2);filter:none}
+.fillbtn:disabled{opacity:.45;cursor:default}
+
+/* --- week / quota --- */
+.wk{padding:14px 16px 16px}
+.wkbat{display:flex;align-items:center;gap:3px;margin-bottom:11px}
+.wkbat-body{
+  flex:1;height:24px;border:2px solid var(--line);border-radius:8px;padding:3px;
+  transition:border-color .3s,box-shadow .4s;
+}
+.wkbat-body i{display:block;height:100%;border-radius:4px;background:var(--wfill);transition:width .4s cubic-bezier(.3,1.2,.5,1)}
+.wkbat-cap{width:4px;height:11px;border-radius:0 3px 3px 0;background:var(--line);flex:none;transition:background .3s}
+.wkbat.live .wkbat-body{border-color:var(--wfill)}
+.wkbat.live .wkbat-cap{background:var(--wfill)}
+.wkbat.hit .wkbat-body{box-shadow:0 0 0 3px color-mix(in srgb,var(--good) 22%,transparent)}
+
+.wknum{display:flex;align-items:baseline;gap:4px;font-size:12px;color:var(--dim);margin-bottom:13px}
+.wknum b{font-size:25px;font-weight:700;color:var(--txt);letter-spacing:-.8px;line-height:1}
+.wknum input{
+  width:44px;background:transparent;border:1px solid transparent;border-radius:6px;
+  padding:2px 3px;font-size:16px;font-weight:700;color:var(--txt);text-align:center;
+  font-family:inherit;-moz-appearance:textfield;appearance:textfield;
+}
+.wknum input::-webkit-outer-spin-button,.wknum input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.wknum input:hover{border-color:var(--line);background:var(--panel-2)}
+.wknum input:focus{outline:none;border-color:var(--accent);background:var(--panel-2)}
+.wknum .of{margin-left:auto;font-size:11px}
+
+.wkdots{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:12px}
+.wkd{display:flex;flex-direction:column;align-items:center;gap:5px;background:none;border:0;padding:0}
+.wkd .bar{width:100%;height:28px;border-radius:5px;background:var(--empty);display:flex;align-items:flex-end;overflow:hidden;transition:box-shadow .16s}
+.wkd .bar i{display:block;width:100%;border-radius:4px;background:var(--dc);transition:height .3s}
+.wkd:hover .bar{box-shadow:inset 0 0 0 1.5px var(--dimmer)}
+.wkd .lb{font-size:9.5px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.wkd.sel .bar{box-shadow:inset 0 0 0 2px var(--accent)}
+.wkd.today .lb{color:var(--accent);font-weight:700}
+.wkd.future{opacity:.38}
+
+.wkmsg{font-size:12px;color:var(--dim);text-align:center;line-height:1.5}
+.wkmsg.hit{color:var(--good);font-weight:600}
+.wkrange{
+  background:transparent;border:1px solid var(--line);border-radius:7px;padding:3px 8px;
+  font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.wkrange:hover{color:var(--txt);border-color:var(--dimmer)}
+
+/* --- sync chip --- */
+.sync-chip{display:inline-flex;align-items:center;gap:7px}
+.sync-chip i{width:7px;height:7px;border-radius:50%;background:var(--dimmer);flex:none}
+.sync-chip.s-ok i{background:var(--good)}
+.sync-chip.s-syncing i{background:var(--accent);animation:blip 1.1s ease-in-out infinite}
+.sync-chip.s-error i{background:#e34948}
+.sync-chip.s-offline i,.sync-chip.s-locked i{background:#eda100}
+@keyframes blip{50%{opacity:.25}}
+
+.frow{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center;margin-bottom:10px}
+.frow label{font-size:12px;color:var(--dim)}
+.frow input{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+  padding:8px 10px;font-size:13px;width:100%;font-family:inherit;
+}
+.frow input:focus{outline:none;border-color:var(--accent)}
+.frow .hint{grid-column:2;font-size:11px;color:var(--dimmer);margin-top:-4px}
+.err{color:#e34948;font-size:12px;margin:8px 0 0;min-height:16px}
+
+/* --- stats --- */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+.stat{background:var(--panel);padding:12px 14px}
+.stat .v{font-size:21px;font-weight:700;letter-spacing:-.7px;line-height:1.1}
+.stat .v small{font-size:12px;color:var(--dim);font-weight:600;letter-spacing:0}
+.stat .k{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+.stat.good .v{color:var(--good)}
+
+.subhead{
+  padding:9px 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);
+  background:var(--panel-2);
+}
+.recs{display:flex;flex-direction:column;gap:0}
+.rec{display:flex;align-items:baseline;gap:10px;padding:9px 16px;border-bottom:1px solid var(--line-soft)}
+.rec:last-child{border-bottom:0}
+.rec .k{font-size:12px;color:var(--dim);flex:1}
+.rec .v{font-size:15px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}
+.rec .v em{font-style:normal;font-size:10.5px;color:var(--dim);font-weight:600;margin-left:5px}
+
+/* --- by habit --- */
+.hstats{padding:12px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.hrow{display:grid;grid-template-columns:1fr auto;gap:3px 8px;align-items:center}
+.hrow .n{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.hrow .n i{width:9px;height:9px;border-radius:3px;background:var(--hc);flex:none}
+.hrow .v{font-size:11.5px;color:var(--dim);font-variant-numeric:tabular-nums;font-weight:600}
+.hrow .track{grid-column:1/-1;height:5px;border-radius:3px;background:var(--empty);overflow:hidden}
+.hrow .track i{display:block;height:100%;border-radius:3px;background:var(--hc);transition:width .3s}
+
+.empty-note{padding:26px 18px;text-align:center;color:var(--dim);font-size:13px;line-height:1.6}
+
+/* ============================================================
+   DIALOGS
+   ============================================================ */
+dialog{
+  border:1px solid var(--line);background:var(--panel);color:var(--txt);
+  border-radius:var(--radius);padding:0;box-shadow:0 24px 60px rgba(0,0,0,.5);
+  width:min(560px,92vw);
+}
+dialog.wide{width:min(940px,95vw)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.dlg-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.dlg-head h3{margin:0;font-size:15px;font-weight:650}
+.dlg-head .x{margin-left:auto;background:none;border:0;color:var(--dim);font-size:20px;line-height:1;padding:2px 6px;border-radius:6px}
+.dlg-head .x:hover{background:var(--panel-2);color:var(--txt)}
+.dlg-body{padding:14px 18px;max-height:70vh;overflow:auto}
+.dlg-foot{display:flex;gap:8px;align-items:center;padding:14px 18px;border-top:1px solid var(--line)}
+.dlg-foot .spacer{margin-left:auto}
+.note{font-size:12px;color:var(--dim);line-height:1.55;margin:0 0 14px}
+.note b{color:var(--txt);font-weight:600}
+
+.hedit{display:flex;align-items:center;gap:8px;padding:6px 0}
+.hedit .swatch{width:26px;height:26px;border-radius:8px;border:1px solid var(--line);flex:none;cursor:pointer}
+.hedit input[type=text]{flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px}
+.hedit input[type=text]:focus{outline:none;border-color:var(--accent)}
+.hedit .mini{background:transparent;border:1px solid var(--line);border-radius:7px;width:28px;height:28px;flex:none;color:var(--dim);font-size:12px;line-height:1;padding:0}
+.hedit .mini:hover{background:var(--panel-2);color:var(--txt)}
+.hedit .mini.del:hover{border-color:#e34948;color:#e34948}
+
+kbd{background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 5px;font:600 11px ui-monospace,monospace;color:var(--txt)}
+.klist{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:12.5px;align-items:center}
+.klist span{color:var(--dim)}
+
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);
+  background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);
+  padding:10px 16px;border-radius:10px;font-size:13px;font-weight:500;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:99;
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ============================================================
+   COMPARE VIEW
+   ============================================================ */
+.cmp-sec{margin-bottom:22px}
+.cmp-title{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);margin:0 0 3px}
+.cmp-sub{font-size:12px;color:var(--dim);margin:0 0 14px}
+
+/* --- column chart: one series, one colour, hairline grid --- */
+.cmp-chart{display:flex;gap:9px}
+.cmp-yaxis{
+  display:flex;flex-direction:column;justify-content:space-between;
+  height:172px;font-size:10px;color:var(--dim);text-align:right;
+  font-variant-numeric:tabular-nums;padding-bottom:0;flex:none;
+}
+.cmp-yaxis span{transform:translateY(-50%)}
+.cmp-main{flex:1;min-width:0}
+.cmp-plot{position:relative;height:172px}
+.cmp-gl{position:absolute;left:0;right:0;height:1px;background:var(--grid)}
+.cmp-gl.base{background:var(--dimmer)}
+.cmp-cols{position:absolute;inset:0;display:flex;align-items:flex-end;gap:4px}
+.cmp-col{
+  flex:1;min-width:0;height:100%;background:transparent;border:0;padding:0;
+  display:flex;align-items:flex-end;justify-content:center;position:relative;
+}
+.cmp-bar{
+  width:100%;max-width:52px;border-radius:4px 4px 0 0;background:var(--series1);
+  transition:filter .15s;min-height:2px;
+}
+.cmp-col:hover .cmp-bar{filter:brightness(1.18)}
+.cmp-col.cur .cmp-bar{outline:2px solid var(--txt);outline-offset:2px;border-radius:4px 4px 0 0}
+.cmp-peak{
+  position:absolute;left:50%;transform:translateX(-50%);
+  font-size:10.5px;font-weight:700;color:var(--txt);white-space:nowrap;
+}
+.cmp-tip{
+  position:absolute;bottom:100%;left:50%;transform:translate(-50%,-8px);
+  background:var(--txt);color:var(--bg);border-radius:7px;padding:6px 9px;
+  font-size:11.5px;font-weight:600;white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity .13s;z-index:5;line-height:1.35;
+}
+.cmp-tip small{display:block;font-weight:500;opacity:.72;font-size:10.5px}
+.cmp-col:hover .cmp-tip,.cmp-col:focus-visible .cmp-tip{opacity:1}
+.cmp-xaxis{display:flex;gap:4px;margin-top:7px;border-top:1px solid var(--grid);padding-top:6px}
+.cmp-xt{flex:1;min-width:0;text-align:center;font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums;overflow:hidden}
+.cmp-xt b{display:block;font-size:11px;color:var(--txt);font-weight:600}
+.cmp-xt.cur b{color:var(--accent)}
+
+/* --- heatmap table (also the table view: every cell prints its number) --- */
+.cmp-scroll{overflow-x:auto}
+table.cmp{border-collapse:separate;border-spacing:2px;font-size:11.5px;font-variant-numeric:tabular-nums;width:100%}
+table.cmp th{font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;padding:0 5px 5px;text-align:center;vertical-align:bottom}
+table.cmp th.rh{text-align:left;padding-left:2px;min-width:74px}
+table.cmp th .sw{display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:5px;vertical-align:middle}
+table.cmp td{padding:6px 5px;text-align:center;border-radius:5px;min-width:44px;font-weight:600}
+table.cmp td.rh{text-align:left;font-weight:600;color:var(--txt);background:transparent;white-space:nowrap;padding-left:2px;font-size:12px}
+table.cmp td.na{background:var(--empty);color:var(--dimmer);font-weight:500}
+table.cmp td.plain{background:var(--panel-2);color:var(--txt)}
+table.cmp tr.cur td.rh{color:var(--accent)}
+table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
+
+.cmp-legend{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:10.5px;color:var(--dim)}
+.cmp-legend .ramp{display:flex;gap:2px}
+.cmp-legend .ramp i{width:26px;height:9px;border-radius:2px}
+
+.print-only{display:none}
+
+/* ============================================================
+   PRINT
+   ============================================================ */
+@page{ size:A4 portrait; margin:11mm 10mm; }
+@media print{
+  :root{
+    --bg:#fff;--panel:#fff;--panel-2:#fafafa;--line:#c9ced8;--line-soft:#e4e7ec;
+    --txt:#000;--dim:#4a5160;--dimmer:#8d94a2;--empty:#e9ecf1;--grid:#e1e0d9;--shadow:none;
+  }
+  html,body{background:#fff !important;color:#000 !important}
+  *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+
+  .no-print{display:none !important}
+  .print-only{display:block}
+  .app{max-width:none;padding:0;margin:0}
+  header.top{display:none}
+
+  .print-head{display:flex;align-items:baseline;gap:10px;border-bottom:1.5px solid #000;padding-bottom:5px;margin-bottom:8px}
+  .print-head h1{margin:0;font-size:15pt;font-weight:700;letter-spacing:-.3px}
+  .print-head .ph-sub{font-size:8.5pt;color:#4a5160}
+  .print-head .ph-right{margin-left:auto;font-size:8pt;color:#6b7383}
+
+  main{display:flex;gap:6mm;align-items:flex-start}
+  .col-sheet{flex:1 1 auto;min-width:0}
+  aside{width:50mm;flex:none;position:static;display:block}
+  aside > *{margin-bottom:4mm}
+
+  .card{border:1px solid #c9ced8;border-radius:6px;box-shadow:none;break-inside:avoid}
+  .card-head{padding:4px 8px;border-color:#c9ced8}
+  .card-head h2{font-size:7pt}
+  .headnum{font-size:9pt}
+  .headnum em{font-size:6pt}
+
+  table.sheet{font-size:7.2pt}
+  table.sheet thead th{padding:3px 2px;font-size:6.4pt;background:#fff}
+  .hname{font-size:6.4pt}
+  .hdot{height:2px;margin-top:3px}
+  table.sheet tbody td{height:5.6mm}
+  td.c-day{font-size:7pt;padding-left:6px}
+  td.c-dow{font-size:6.4pt}
+  td.c-dow.is-today{font-size:6pt}
+  .cell{height:5.6mm}
+  .cell::after{inset:1.1mm;border-width:.9pt;border-radius:1.2mm}
+  .cell.on::before{width:5px;height:3px;border-width:1.4px}
+  tbody tr.today td{background:transparent}
+  tbody tr.sel td{box-shadow:none}
+  tbody tr.future{opacity:1}
+  tbody tr.weekend td{background:#f3f5f8}
+  .daybar{width:9mm;height:1.5mm}
+  tfoot td{padding:4px 2px;font-size:6.6pt}
+  tbody tr.sel td.c-day::before{display:none}
+
+  .daypick,.fillbtn{display:none}
+  .stat{padding:5px 7px}
+  .stat .v{font-size:11pt}
+  .stat .v small{font-size:7pt}
+  .stat .k{font-size:6pt}
+  .subhead{padding:3px 7px;font-size:6pt}
+  .rec{padding:4px 7px}
+  .rec .k{font-size:6.8pt}
+  .rec .v{font-size:8pt}
+  .rec .v em{font-size:6pt}
+  .batwrap{padding:5mm 0 2mm}
+  .battery{width:26mm}
+  .bat-body{height:52mm;border-width:2px;border-radius:8px;padding:1.4mm}
+  .battery.full .bat-body{box-shadow:none}
+  .seg{border-radius:2px;box-shadow:none !important}
+  .bat-read{text-shadow:none}
+  .bat-read .pct{font-size:15pt;letter-spacing:-.5px}
+  .bat-read .frac{font-size:7pt;margin-top:2px}
+  .hstats{padding:6px 8px 8px;gap:5px}
+  .hrow .n{font-size:6.8pt}
+  .hrow .v{font-size:6.4pt}
+  .hrow .track{height:1.4mm}
+
+  dialog,.toast{display:none !important}
+
+  /* --- comparison report --- */
+  #cmpReport{display:none}
+  body[data-print="compare"] main,
+  body[data-print="compare"] .print-head{display:none !important}
+  body[data-print="compare"] #cmpReport{display:block}
+  body[data-print="compare"] #cmpReport .cmp-head{
+    display:flex;align-items:baseline;gap:10px;
+    border-bottom:1.5px solid #000;padding-bottom:5px;margin-bottom:12px;
+  }
+  body[data-print="compare"] #cmpReport h1{margin:0;font-size:15pt;font-weight:700}
+  #cmpReport .cmp-yaxis,#cmpReport .cmp-plot{height:46mm}
+  #cmpReport table.cmp{font-size:7.6pt}
+  #cmpReport table.cmp td{padding:4px 3px}
+  #cmpReport .cmp-tip{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="top no-print">
+    <div class="brand">Daily Habit Tracker</div>
+
+    <div class="navstats">
+      <div class="ns"><b id="nsFull">0</b><span>full days</span></div>
+      <div class="ns big" id="nsStreakWrap"><b id="nsStreak">0</b><span>day streak</span></div>
+    </div>
+
+    <div class="monthnav">
+      <button class="btn icon" id="prevM" title="Previous month (PageUp)">‹</button>
+      <div class="label" id="mLabel">—</div>
+      <button class="btn icon" id="nextM" title="Next month (PageDown)">›</button>
+      <button class="btn" id="todayBtn" title="Jump to today">Today</button>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="cmpBtn" title="Compare months (C)">📊 Compare</button>
+      <button class="btn" id="editBtn">⚙ Habits</button>
+      <button class="btn" id="saveBtn" title="Save habits.json — point it at your Google Drive folder">↓ Save</button>
+      <button class="btn" id="loadBtn" title="Load habits.json">↑ Load</button>
+      <button class="btn primary" id="pdfBtn" title="Print / Save as PDF">📄 PDF</button>
+      <button class="btn sync-chip s-off" id="syncBtn" title="Sync"><i></i>Local only</button>
+      <button class="btn icon" id="themeBtn" title="Toggle theme">◑</button>
+      <button class="btn icon" id="helpBtn" title="Keyboard shortcuts">?</button>
+    </div>
+  </header>
+
+  <div class="print-head print-only">
+    <h1 id="pTitle">—</h1>
+    <div class="ph-sub" id="pSub"></div>
+    <div class="ph-right" id="pGen"></div>
+  </div>
+
+  <main>
+    <div class="col-sheet">
+      <section class="card">
+        <div class="card-head no-print">
+          <h2>Month sheet</h2>
+          <div class="spacer"></div>
+          <span style="font-size:12px;color:var(--dim)" id="sheetHint"></span>
+        </div>
+        <table class="sheet" id="sheet"></table>
+      </section>
+    </div>
+
+    <aside>
+      <section class="card">
+        <div class="daypick no-print">
+          <div class="big" id="selBig">—</div>
+          <div class="sub" id="selSub"></div>
+        </div>
+        <div class="batwrap">
+          <div class="battery empty" id="battery">
+            <div class="bat-cap"></div>
+            <div class="bat-body">
+              <div class="segs" id="segs"></div>
+              <div class="bat-read">
+                <div class="pct" id="batPct">0%</div>
+                <div class="frac" id="batFrac">0 / 0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="fillbtn no-print" id="fillBtn">—</button>
+      </section>
+
+      <section class="card no-print" id="weekCard">
+        <div class="card-head">
+          <h2>This week</h2>
+          <div class="spacer"></div>
+          <button class="wkrange" id="wkRange" title="Click to switch the week start day">—</button>
+        </div>
+        <div class="wk">
+          <div class="wkbat" id="wkBat">
+            <div class="wkbat-body"><i id="wkFill" style="width:0"></i></div>
+            <div class="wkbat-cap"></div>
+          </div>
+          <div class="wknum">
+            <b id="wkDone">0</b>
+            <span>/</span>
+            <input type="number" id="wkQuota" min="1" step="1" title="Your target for the week — edit it">
+            <span>ticks</span>
+            <span class="of" id="wkOf"></span>
+          </div>
+          <div class="wkdots" id="wkDots"></div>
+          <div class="wkmsg" id="wkMsg"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>This month</h2></div>
+        <div class="stats" id="stats"></div>
+        <div class="subhead">All-time best</div>
+        <div class="recs" id="records"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>By habit</h2></div>
+        <div class="hstats" id="hstats"></div>
+      </section>
+    </aside>
+  </main>
+
+  <!-- printable comparison report (screen: hidden) -->
+  <div id="cmpReport" style="display:none"></div>
+</div>
+
+<!-- ==================== COMPARE ==================== -->
+<dialog id="cmpDlg" class="wide">
+  <div class="dlg-head">
+    <h3>Compare months</h3>
+    <button class="x" data-close>×</button>
+  </div>
+  <div class="dlg-body" id="cmpBody"></div>
+  <div class="dlg-foot">
+    <button class="btn" id="cmpPrint">📄 PDF of this comparison</button>
+    <div class="spacer"></div>
+    <button class="btn primary" data-close>Close</button>
+  </div>
+</dialog>
+
+<!-- ==================== HABITS ==================== -->
+<dialog id="editDlg">
+  <div class="dlg-head">
+    <h3>Habits — <span id="edMonth"></span></h3>
+    <button class="x" data-close>×</button>
+  </div>
+  <div class="dlg-body">
+    <p class="note" id="edNote"></p>
+    <div id="edList"></div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" id="edAdd">+ Add habit</button>
+    <div class="spacer"></div>
+    <button class="btn primary" data-close>Done</button>
+  </div>
+</dialog>
+
+<!-- ==================== LOAD ==================== -->
+<dialog id="loadDlg">
+  <div class="dlg-head">
+    <h3>Load habits.json</h3>
+    <button class="x" data-close>×</button>
+  </div>
+  <div class="dlg-body">
+    <p class="note" id="loadInfo"></p>
+    <p class="note">
+      <b>Merge</b> keeps everything you have here and adds anything the file knows about
+      (safe for syncing between two machines).<br>
+      <b>Replace</b> throws away the data in this browser and uses the file exactly as-is.
+    </p>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn primary" id="doMerge">Merge</button>
+    <button class="btn" id="doReplace">Replace</button>
+    <div class="spacer"></div>
+    <button class="btn" data-close>Cancel</button>
+  </div>
+</dialog>
+
+<!-- ==================== SYNC ==================== -->
+<dialog id="syncDlg">
+  <div class="dlg-head">
+    <h3>Sync with GitHub</h3>
+    <button class="x" data-close>×</button>
+  </div>
+  <div class="dlg-body">
+
+    <div id="syncSetup">
+      <p class="note">
+        Your habits are stored as <b>habits.json</b> in a <b>private</b> GitHub repo, so the
+        data is only readable by you. Every save is a commit, which means you get full
+        history and can roll back any day. See <b>SETUP.md</b> for how to create the repo
+        and the token.
+      </p>
+      <div class="frow"><label for="cfgRepo">Repository</label>
+        <input id="cfgRepo" placeholder="your-name/habits-data" spellcheck="false"></div>
+      <div class="frow"><label for="cfgPath">File</label>
+        <input id="cfgPath" value="habits.json" spellcheck="false"></div>
+      <div class="frow"><label for="cfgBranch">Branch</label>
+        <input id="cfgBranch" value="main" spellcheck="false"></div>
+      <div class="frow"><label for="cfgTok">Access token</label>
+        <input id="cfgTok" type="password" placeholder="github_pat_…" spellcheck="false"></div>
+      <div class="frow"><span></span>
+        <span class="hint">Fine-grained token, that one repo only, Contents: read and write.</span></div>
+      <div class="frow"><label for="cfgPass">Passphrase</label>
+        <input id="cfgPass" type="password" placeholder="encrypts the token in this browser"></div>
+      <div class="frow"><label for="cfgPass2">Repeat</label>
+        <input id="cfgPass2" type="password"></div>
+      <p class="note" style="margin-top:12px">
+        The token is encrypted with your passphrase before it touches storage, so it is never
+        held in the clear. You will be asked for the passphrase once per browser session.
+      </p>
+      <p class="err" id="syncErr"></p>
+    </div>
+
+    <div id="syncUnlock" style="display:none">
+      <p class="note">Enter your passphrase to unlock this browser's access token.</p>
+      <div class="frow"><label for="unlockPass">Passphrase</label>
+        <input id="unlockPass" type="password" autocomplete="current-password"></div>
+      <p class="err" id="unlockErr"></p>
+    </div>
+
+    <div id="syncOn" style="display:none">
+      <p class="note">Connected to <b id="onRepo">—</b> · <span id="onWhen">—</span></p>
+      <p class="note">
+        Edits push a couple of seconds after you stop clicking. If another device wrote
+        first, the newer copy is pulled in and merged rather than overwritten. localStorage
+        keeps working with no network, and syncs when you are back.
+      </p>
+    </div>
+
+  </div>
+  <div class="dlg-foot">
+    <button class="btn primary" id="syncConnect">Connect</button>
+    <button class="btn primary" id="syncUnlockBtn" style="display:none">Unlock</button>
+    <button class="btn" id="syncNowBtn" style="display:none">Sync now</button>
+    <div class="spacer"></div>
+    <button class="btn" id="syncOff" style="display:none">Disconnect</button>
+    <button class="btn" data-close>Close</button>
+  </div>
+</dialog>
+
+<!-- ==================== HELP ==================== -->
+<dialog id="helpDlg">
+  <div class="dlg-head">
+    <h3>Shortcuts &amp; how it works</h3>
+    <button class="x" data-close>×</button>
+  </div>
+  <div class="dlg-body">
+    <div class="klist">
+      <kbd>1</kbd><span>…<kbd>9</kbd> — toggle that habit for the selected day</span>
+      <kbd>Enter</kbd><span>Complete every habit for the day — or clear it if already full</span>
+      <kbd>↑</kbd><span><kbd>↓</kbd> — move the selected day</span>
+      <kbd>PgUp</kbd><span><kbd>PgDn</kbd> — previous / next month</span>
+      <kbd>T</kbd><span>Jump to today &nbsp;•&nbsp; <kbd>C</kbd> — compare months</span>
+      <kbd>Ctrl</kbd><span>+<kbd>S</kbd> — save habits.json &nbsp;•&nbsp; <kbd>Ctrl</kbd>+<kbd>P</kbd> — PDF</span>
+    </div>
+    <p class="note" style="margin-top:16px">
+      <b>Filling the battery one step at a time</b> — click a cell in the month sheet, press
+      <kbd>1</kbd>–<kbd>9</kbd>, or click a battery segment directly (clicking the topmost
+      lit segment un-fills it). The big button is the all-or-nothing switch.
+    </p>
+    <p class="note">
+      <b>The weekly target.</b> The battery is always today — that doesn't change. The week
+      card underneath counts every tick across the whole week against one target, so a bad
+      Tuesday doesn't write off the week: a strong Saturday can still cover it. Click the
+      target number to change it, or the date range to switch between Monday and Sunday
+      starts. Weeks spanning two months are handled; each day counts against its own month's
+      habit list.
+    </p>
+    <p class="note">
+      <b>Sync (optional).</b> The chip in the toolbar says <b>Local only</b> until you connect
+      a private GitHub repo — click it to set that up. Once connected, edits push a couple of
+      seconds after you stop clicking, and any browser you unlock pulls the same data. It
+      still works offline and catches up later. Leave it off and nothing changes.
+    </p>
+    <p class="note">
+      <b>Storage.</b> Everything is written to this browser's local storage the moment you click,
+      so nothing is lost if you close the tab. <b>Save</b> writes a <code>habits.json</code>
+      backup — put that inside your Google Drive folder and Drive keeps it synced across
+      machines. <b>Load</b> brings it back.
+    </p>
+    <p class="note">
+      <b>Months.</b> Each month stores its own snapshot of the habit list, so editing this
+      month's habits never rewrites your history. New months start from your current list.
+    </p>
+  </div>
+  <div class="dlg-foot">
+    <div class="spacer"></div>
+    <button class="btn primary" data-close>Close</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   CONSTANTS
+   ============================================================ */
+const LS_KEY   = "dht.v1";
+const LS_THEME = "dht.theme";
+
+/* Categorical series palette — the validated 8-slot reference set.
+   Verified with the dataviz validator against THIS app's surfaces
+   (light #ffffff / dark #161a21): all checks pass in both modes.
+   Habits store a slot index, not a hex, so both modes get their own step. */
+const SERIES = {
+  light: ["#2a78d6","#eb6834","#1baf7a","#eda100","#e87ba4","#008300","#4a3aa7","#e34948"],
+  dark:  ["#3987e5","#d95926","#199e70","#c98500","#d55181","#008300","#9085e9","#e66767"]
+};
+/* the palette this file shipped with first — used only to migrate old saves */
+const LEGACY = ["#4f9dff","#46d39a","#ffb340","#ff6b6b","#b985ff","#38d0d8","#ff8fc7","#a3b18a","#f2a65a","#7ea8ff"];
+
+/* Sequential ramp for the comparison heatmap: ONE hue, light→dark,
+   with the near-zero step receding toward each mode's surface.
+   Each entry is [fill, ink] — ink chosen for >= 4.5:1 on its own fill. */
+const HEAT = {
+  light: [["#cde2fb","#0b0b0b"],["#9ec5f4","#0b0b0b"],["#6da7ec","#0b0b0b"],
+          ["#3987e5","#0b0b0b"],["#256abf","#ffffff"],["#184f95","#ffffff"]],
+  dark:  [["#0d366b","#c3c2b7"],["#104281","#ffffff"],["#184f95","#ffffff"],
+          ["#256abf","#ffffff"],["#3987e5","#0b0b0b"],["#6da7ec","#0b0b0b"]]
+};
+
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ABBR   = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DOW    = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+const $ = s => document.querySelector(s);
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let state, view, selDay, fileHandle = null, pendingImport = null;
+
+const theme  = () => document.documentElement.dataset.theme === "light" ? "light" : "dark";
+const hue    = slot => SERIES[theme()][((slot|0) % 8 + 8) % 8];
+const heat   = pct => HEAT[theme()][Math.max(0, Math.min(5, Math.floor(pct / 100 * 6)))];
+
+function uid(){ return "h" + Math.random().toString(36).slice(2,9); }
+
+function seed(){
+  return { version:3, weekStart:1, quota:null, master:[
+    { id:uid(), name:"Exercise",    slot:0 },
+    { id:uid(), name:"Read",        slot:1 },
+    { id:uid(), name:"Deep work",   slot:2 },
+    { id:uid(), name:"Water",       slot:3 },
+    { id:uid(), name:"Sleep by 12", slot:4 }
+  ], months:{} };
+}
+
+/**
+ * v1 → v2: a hex per habit became a palette slot.
+ * v2 → v3: added the weekly quota + week-start day.
+ * Idempotent — it runs on every load and on every import.
+ */
+function migrate(s){
+  const fix = list => (list || []).forEach((h,i) => {
+    if(typeof h.slot !== "number"){
+      const old = LEGACY.indexOf(h.color);
+      h.slot = (old >= 0 ? old : i) % 8;
+    }
+    delete h.color;
+  });
+  fix(s.master);
+  for(const k in s.months) fix(s.months[k].habits);
+  if(s.weekStart !== 0 && s.weekStart !== 1) s.weekStart = 1;      // default Monday
+  if(typeof s.quota !== "number" || s.quota <= 0) s.quota = null;  // null = auto (80%)
+  s.version = 3;
+  return s;
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return seed();
+    const s = JSON.parse(raw);
+    if(!s || !Array.isArray(s.master) || typeof s.months !== "object") return seed();
+    return migrate(s);
+  }catch(e){ return seed(); }
+}
+/** Write to localStorage only. Used when applying REMOTE data, which must not look dirty. */
+function saveLocal(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch(e){ toast("⚠ Could not write to local storage"); }
+}
+/** Write a LOCAL edit: persist, then queue a push if sync is on. */
+function save(){
+  saveLocal();
+  scheduleSync();
+}
+
+/* ---- month helpers ---- */
+const pad2    = n => String(n).padStart(2,"0");
+const mkey    = (y,m) => `${y}-${pad2(m+1)}`;
+const daysIn  = (y,m) => new Date(y, m+1, 0).getDate();
+const viewKey = () => mkey(view.y, view.m);
+const parseKey= k => ({ y:+k.slice(0,4), m:+k.slice(5,7) - 1 });
+
+function nowKey(){ const d = new Date(); return mkey(d.getFullYear(), d.getMonth()); }
+function isToday(y,m,d){
+  const t = new Date();
+  return y===t.getFullYear() && m===t.getMonth() && d===t.getDate();
+}
+
+/** Read-only month view. Months you never touched are NOT written to storage. */
+function md(key){
+  return state.months[key] || { habits: state.master.map(h => ({...h})), entries:{} };
+}
+function materialize(key){
+  if(!state.months[key]) state.months[key] = { habits: state.master.map(h => ({...h})), entries:{} };
+  return state.months[key];
+}
+
+function doneSet(key, day){ return md(key).entries[day] || []; }
+function isDone(key, day, hid){ return doneSet(key, day).indexOf(hid) !== -1; }
+
+function setDone(key, day, hid, on){
+  const m = materialize(key);
+  const arr = m.entries[day] || (m.entries[day] = []);
+  const i = arr.indexOf(hid);
+  if(on && i < 0) arr.push(hid);
+  if(!on && i >= 0) arr.splice(i, 1);
+  if(arr.length === 0) delete m.entries[day];
+  save();
+}
+
+function dayDone(key, day){
+  const hs = md(key).habits, set = doneSet(key, day);
+  let n = 0;
+  for(const h of hs) if(set.indexOf(h.id) !== -1) n++;
+  return n;
+}
+
+/** Days of `key` that count toward a denominator: the whole month, or up to today. */
+function elapsedIn(key){
+  const {y,m} = parseKey(key), nd = daysIn(y,m), t = new Date();
+  if(y === t.getFullYear() && m === t.getMonth()) return Math.min(t.getDate(), nd);
+  if(y > t.getFullYear() || (y === t.getFullYear() && m > t.getMonth())) return 0;   // future
+  return nd;
+}
+
+/** Whole-month roll-up used by the summary, the header figure and the compare view. */
+function monthStats(key){
+  const rec = md(key), hs = rec.habits, {y,m} = parseKey(key);
+  const nd = daysIn(y,m), elapsed = elapsedIn(key);
+  const per = new Map(hs.map(h => [h.id, 0]));
+  let total = 0, full = 0;
+  for(let d = 1; d <= nd; d++){
+    const set = rec.entries[d] || [];
+    let c = 0;
+    for(const h of hs) if(set.indexOf(h.id) !== -1){ c++; per.set(h.id, per.get(h.id) + 1); }
+    total += c;
+    if(hs.length && c === hs.length) full++;
+  }
+  const possible = hs.length * elapsed;
+  return { habits:hs, days:nd, elapsed, total, full, possible,
+           pct: possible ? Math.round(total / possible * 100) : 0, per };
+}
+
+/* ratio -> colour (red → amber → green); the battery is a status gauge, not a series */
+function fillColor(r){
+  const h = 4 + 136 * Math.max(0, Math.min(1, r));
+  return `hsl(${h.toFixed(0)} 76% 55%)`;
+}
+
+function esc(s){
+  return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){
+  const key = viewKey(), m = md(key), n = m.habits.length, nd = daysIn(view.y, view.m);
+  if(selDay > nd) selDay = nd;
+
+  $("#mLabel").textContent = `${MONTHS[view.m]} ${view.y}`;
+  $("#sheetHint").textContent = n ? `${n} habit${n>1?"s":""} × ${nd} days` : "";
+
+  const st = monthStats(key);
+  const sk = streak();
+  $("#nsFull").textContent   = st.full;
+  $("#nsStreak").textContent = sk;
+  $("#nsStreakWrap").classList.toggle("hot", sk > 0);
+
+  renderSheet(key, m, nd);
+  renderPanel(key, m);
+  renderWeek();
+  renderStats(st, sk);
+  renderByHabit(key, st);
+  renderPrintHead(key, st, sk);
+}
+
+/* ---------- left: month sheet ---------- */
+function renderSheet(key, m, nd){
+  const hs = m.habits, t = new Date();
+  const curMonth = view.y === t.getFullYear() && view.m === t.getMonth();
+
+  let h = `<thead><tr><th class="h-day">Day</th><th class="h-dow"></th>`;
+  for(const hb of hs){
+    h += `<th class="h-habit" title="${esc(hb.name)}">
+            <span class="hname">${esc(hb.name)}</span>
+            <span class="hdot" style="background:${hue(hb.slot)}"></span></th>`;
+  }
+  h += `<th class="h-bar">Day</th></tr></thead><tbody>`;
+
+  for(let d = 1; d <= nd; d++){
+    const dow    = new Date(view.y, view.m, d).getDay();
+    const set    = m.entries[d] || [];
+    const today  = isToday(view.y, view.m, d);
+    const future = curMonth && d > t.getDate();
+    const cls = [(dow===0||dow===6)?"weekend":"", today?"today":"",
+                 d===selDay?"sel":"", future?"future":""].filter(Boolean).join(" ");
+
+    h += `<tr class="${cls}" data-day="${d}">`;
+    h += `<td class="c-day">${d}</td>`;
+    h += today ? `<td class="c-dow is-today">Today</td>` : `<td class="c-dow">${DOW[dow]}</td>`;
+
+    let cnt = 0;
+    for(const hb of hs){
+      const on = set.indexOf(hb.id) !== -1;
+      if(on) cnt++;
+      h += `<td><button class="cell${on?" on":""}" style="--hc:${hue(hb.slot)}"
+              data-day="${d}" data-h="${hb.id}"
+              title="${esc(hb.name)} — ${MONTHS[view.m]} ${d}" aria-pressed="${on}"></button></td>`;
+    }
+    const r = hs.length ? cnt / hs.length : 0;
+    h += `<td><div class="daybar"><i style="width:${(r*100).toFixed(1)}%;background:${r?fillColor(r):"transparent"}"></i></div></td></tr>`;
+  }
+
+  h += `</tbody><tfoot><tr><td class="c-day" colspan="2">Total</td>`;
+  let tot = 0;
+  for(const hb of hs){
+    let c = 0;
+    for(let d = 1; d <= nd; d++) if(isDone(key, d, hb.id)) c++;
+    tot += c;
+    h += `<td>${c}</td>`;
+  }
+  h += `<td>${tot}</td></tr></tfoot>`;
+
+  $("#sheet").innerHTML = h;
+}
+
+/* ---------- right: battery, all/none button, chips ---------- */
+function renderPanel(key, m){
+  const hs = m.habits, n = hs.length;
+  const set = doneSet(key, selDay);
+  const c = hs.filter(h => set.indexOf(h.id) !== -1).length;
+  const r = n ? c / n : 0;
+  const col = fillColor(r);
+
+  const dt = new Date(view.y, view.m, selDay);
+  $("#selBig").textContent = `${DOW[dt.getDay()]}, ${MONTHS[view.m]} ${selDay}`;
+  $("#selSub").textContent = isToday(view.y, view.m, selDay) ? "Today" : String(view.y);
+
+  const bat = $("#battery");
+  bat.style.setProperty("--fill", col);
+  bat.classList.toggle("full",  n > 0 && c === n);
+  bat.classList.toggle("empty", c === 0);
+  bat.classList.toggle("live",  c > 0);
+
+  const segs = $("#segs"), need = Math.max(n, 1);
+  if(segs.children.length !== need){
+    segs.innerHTML = "";
+    for(let i = 0; i < need; i++){
+      const s = document.createElement("div");
+      s.className = "seg"; s.dataset.i = i;
+      segs.appendChild(s);
+    }
+  }
+  [...segs.children].forEach((s,i) => s.classList.toggle("on", n > 0 && i < c));
+
+  $("#batPct").textContent  = n ? Math.round(r*100) + "%" : "—";
+  $("#batFrac").textContent = `${c} / ${n}`;
+
+  /* one switch: fill the whole day, or clear it */
+  const fb = $("#fillBtn");
+  if(n === 0){
+    fb.textContent = "Add some habits first";
+    fb.className = "fillbtn no-print clear"; fb.disabled = true;
+  }else if(c === n){
+    fb.textContent = "↺ Clear the day";
+    fb.className = "fillbtn no-print clear"; fb.disabled = false;
+  }else{
+    fb.textContent = `✓ Complete all ${n} habits`;
+    fb.className = "fillbtn no-print"; fb.disabled = false;
+  }
+
+}
+
+/* ============================================================
+   WEEK / QUOTA
+   A week is a slice of the same per-date data — nothing is stored per week.
+   Weeks routinely straddle two months, so every helper walks real Dates and
+   reads each day from its OWN month record (habit lists can differ).
+   ============================================================ */
+
+/** The 7 dates of the week containing y/m/d, honouring state.weekStart. */
+function weekDates(y, m, d){
+  const shift = (new Date(y, m, d).getDay() - state.weekStart + 7) % 7;
+  const s = new Date(y, m, d - shift);
+  return [...Array(7)].map((_,i) => new Date(s.getFullYear(), s.getMonth(), s.getDate() + i));
+}
+
+/** Target ticks for the week. Unset = 80% of what's possible; always clamped to possible. */
+function weekQuota(possible){
+  if(possible <= 0) return 0;
+  const q = (typeof state.quota === "number" && state.quota > 0)
+          ? state.quota : Math.round(possible * 0.8);
+  return Math.max(1, Math.min(q, possible));
+}
+
+function weekStats(y, m, d){
+  const dates = weekDates(y, m, d);
+  const t = new Date(); t.setHours(0,0,0,0);
+  let done = 0, possible = 0, left = 0;
+
+  const days = dates.map(dt => {
+    const k = mkey(dt.getFullYear(), dt.getMonth());
+    const n = md(k).habits.length;
+    const c = dayDone(k, dt.getDate());
+    const future = dt.getTime() > t.getTime();
+    done += c; possible += n;
+    if(future || dt.getTime() === t.getTime()) left++;   // days you can still act on
+    return { dt, n, c, future, today: dt.getTime() === t.getTime() };
+  });
+
+  const quota = weekQuota(possible);
+  return { dates, days, done, possible, quota, left,
+           past: dates[6].getTime() < t.getTime(),
+           ratio: quota ? done / quota : 0 };
+}
+
+/** Consecutive weeks that hit their target, ending with this week (or last week if this one is still open). */
+function weekStreak(){
+  const t = new Date();
+  let start = weekDates(t.getFullYear(), t.getMonth(), t.getDate())[0];
+  const hit = s => {
+    const w = weekStats(s.getFullYear(), s.getMonth(), s.getDate());
+    return w.possible > 0 && w.done >= w.quota;
+  };
+  const back = s => new Date(s.getFullYear(), s.getMonth(), s.getDate() - 7);
+  if(!hit(start)) start = back(start);          // an open week shouldn't break a live run
+  let n = 0;
+  while(hit(start) && n < 520){ n++; start = back(start); }
+  return n;
+}
+
+const shortDate = dt => `${ABBR[dt.getMonth()]} ${dt.getDate()}`;
+
+function renderWeek(){
+  const w = weekStats(view.y, view.m, selDay);
+  const card = $("#weekCard");
+  if(!w.possible){ card.style.display = "none"; return; }
+  card.style.display = "";
+
+  const col = fillColor(Math.min(1, w.ratio));
+  const bat = $("#wkBat");
+  bat.style.setProperty("--wfill", col);
+  bat.classList.toggle("live", w.done > 0);
+  bat.classList.toggle("hit",  w.done >= w.quota);
+  $("#wkFill").style.width = Math.min(100, w.ratio * 100).toFixed(1) + "%";
+
+  $("#wkRange").textContent = `${shortDate(w.dates[0])} – ${shortDate(w.dates[6])}`;
+  $("#wkDone").textContent  = w.done;
+  $("#wkOf").textContent    = `${w.possible} possible`;
+
+  const qi = $("#wkQuota");
+  if(document.activeElement !== qi){ qi.value = w.quota; }
+  qi.max = w.possible;
+
+  $("#wkDots").innerHTML = w.days.map(d => {
+    const k = mkey(d.dt.getFullYear(), d.dt.getMonth());
+    const r = d.n ? d.c / d.n : 0;
+    const sel = d.dt.getFullYear() === view.y && d.dt.getMonth() === view.m && d.dt.getDate() === selDay;
+    return `<button class="wkd${d.today?" today":""}${d.future?" future":""}${sel?" sel":""}"
+              data-y="${d.dt.getFullYear()}" data-m="${d.dt.getMonth()}" data-d="${d.dt.getDate()}"
+              title="${DOW[d.dt.getDay()]} ${shortDate(d.dt)} — ${d.c}/${d.n}">
+              <span class="bar"><i style="height:${(r*100).toFixed(1)}%;--dc:${r?fillColor(r):"transparent"}"></i></span>
+              <span class="lb">${DOW[d.dt.getDay()][0]}</span></button>`;
+  }).join("");
+
+  /* status line */
+  const wk = weekStreak();
+  const run = wk ? ` · <b style="color:var(--good)">${wk} week${wk===1?"":"s"} running</b>` : "";
+  const msg = $("#wkMsg");
+  const short = w.quota - w.done;
+  if(w.done >= w.quota){
+    msg.className = "wkmsg hit";
+    msg.innerHTML = `✓ Target hit — ${w.done - w.quota > 0 ? `${w.done - w.quota} to spare` : "right on the line"}${run}`;
+  }else if(w.past){
+    msg.className = "wkmsg";
+    msg.innerHTML = `Missed by ${short} tick${short===1?"":"s"}`;
+  }else{
+    msg.className = "wkmsg";
+    msg.innerHTML = `<b style="color:var(--txt)">${short} more</b> over ${w.left} day${w.left===1?"":"s"}${run}`;
+  }
+}
+
+/* ---------- this month + all-time records ---------- */
+function renderStats(st, sk){
+  $("#stats").innerHTML = `
+    <div class="stat"><div class="v">${st.possible ? st.pct + "%" : "—"}</div><div class="k">Adherence</div></div>
+    <div class="stat"><div class="v">${st.total}<small> / ${st.possible}</small></div><div class="k">Checks logged</div></div>
+    <div class="stat"><div class="v">${st.full}</div><div class="k">Full-battery days</div></div>
+    <div class="stat${sk?" good":""}"><div class="v">${sk}</div><div class="k">Current streak</div></div>`;
+
+  const r = records();
+  const when = x => x ? `<em>${ABBR[parseKey(x.k).m]} ${parseKey(x.k).y}</em>` : "";
+  $("#records").innerHTML = `
+    <div class="rec"><span class="k">Best month</span>
+      <span class="v">${r.bestPct ? r.bestPct.v + "%" : "—"}${when(r.bestPct)}</span></div>
+    <div class="rec"><span class="k">Longest streak</span>
+      <span class="v">${r.longest ? r.longest + `<em>day${r.longest===1?"":"s"}</em>` : "—"}</span></div>
+    <div class="rec"><span class="k">Most full-battery days</span>
+      <span class="v">${r.bestFull ? r.bestFull.v : "—"}${when(r.bestFull)}</span></div>`;
+}
+
+/**
+ * All-time bests across every tracked month.
+ * "Best month" ignores months with fewer than 7 elapsed days — otherwise a brand-new
+ * month sits at 100% after one good day and permanently owns the record.
+ */
+function records(){
+  let bestPct = null, bestFull = null;
+  for(const k of trackedMonths()){
+    const st = monthStats(k);
+    if(st.elapsed >= 7 && st.possible && (!bestPct || st.pct > bestPct.v)) bestPct = { v:st.pct, k };
+    if(st.full > 0 && (!bestFull || st.full > bestFull.v))                 bestFull = { v:st.full, k };
+  }
+  return { bestPct, bestFull, longest: longestStreak() };
+}
+
+/** Longest run of consecutive full-battery days ever recorded, across month boundaries. */
+function longestStreak(){
+  const days = [];
+  for(const k in state.months){
+    const rec = state.months[k];
+    if(!rec.habits.length) continue;
+    const { y, m } = parseKey(k), nd = daysIn(y, m);
+    for(let d = 1; d <= nd; d++){
+      const set = rec.entries[d];
+      if(set && rec.habits.every(h => set.indexOf(h.id) !== -1))
+        days.push(Date.UTC(y, m, d) / 86400000);
+    }
+  }
+  days.sort((a,b) => a - b);
+  let best = 0, run = 0, prev = null;
+  for(const d of days){
+    run  = (prev !== null && d === prev + 1) ? run + 1 : 1;
+    prev = d;
+    if(run > best) best = run;
+  }
+  return best;
+}
+
+/* ---------- by habit ---------- */
+function renderByHabit(key, st){
+  $("#hstats").innerHTML = st.habits.length ? st.habits.map(h => {
+    const c = st.per.get(h.id) || 0;
+    const p = st.elapsed ? Math.round(c / st.elapsed * 100) : 0;
+    return `<div class="hrow" style="--hc:${hue(h.slot)}">
+              <div class="n"><i></i>${esc(h.name)}</div>
+              <div class="v">${c}/${st.elapsed} · ${p}%</div>
+              <div class="track"><i style="width:${p}%"></i></div>
+            </div>`;
+  }).join("") : `<div class="empty-note" style="padding:14px">—</div>`;
+}
+
+/** Consecutive full-battery days ending today (or at month end for past months). Crosses months. */
+function streak(){
+  const t = new Date();
+  const cur = view.y === t.getFullYear() && view.m === t.getMonth();
+  const d = cur ? new Date(t.getFullYear(), t.getMonth(), t.getDate())
+                : new Date(view.y, view.m, daysIn(view.y, view.m));
+
+  const perfect = dt => {
+    const rec = state.months[mkey(dt.getFullYear(), dt.getMonth())];
+    if(!rec || !rec.habits.length) return false;
+    const set = rec.entries[dt.getDate()] || [];
+    return rec.habits.every(h => set.indexOf(h.id) !== -1);
+  };
+
+  if(!perfect(d)) d.setDate(d.getDate() - 1);   // an unfinished today shouldn't break a live streak
+  let s = 0;
+  while(perfect(d) && s < 3660){ s++; d.setDate(d.getDate() - 1); }
+  return s;
+}
+
+function renderPrintHead(key, st, sk){
+  $("#pTitle").textContent = `${MONTHS[view.m]} ${view.y}`;
+  const bits = [`${st.habits.length} habit${st.habits.length===1?"":"s"}`];
+  if(st.possible) bits.push(`${st.pct}% adherence`, `${st.total}/${st.possible} checks`);
+  bits.push(`${st.full} full-battery day${st.full===1?"":"s"}`);
+  if(sk) bits.push(`${sk}-day streak`);
+  $("#pSub").textContent = "Habit report · " + bits.join(" · ");
+  $("#pGen").textContent = "generated " + new Date().toLocaleDateString(undefined,
+                            {year:"numeric",month:"short",day:"numeric"});
+}
+
+/* ============================================================
+   COMPARE MONTHS
+   ============================================================ */
+function trackedMonths(){
+  return Object.keys(state.months)
+    .filter(k => {
+      const rec = state.months[k];
+      return rec.habits.length && Object.keys(rec.entries).length;
+    })
+    .sort();
+}
+
+function buildCompare(){
+  const keys = trackedMonths().slice(-12);          // last 12 tracked months
+  if(keys.length === 0)
+    return `<div class="empty-note">Nothing to compare yet.<br>
+            Tick a few habits and this fills in.</div>`;
+  if(keys.length === 1)
+    return `<div class="empty-note"><b>${ABBR[parseKey(keys[0]).m]} ${parseKey(keys[0]).y}</b>
+            is the only month with data so far.<br>Come back next month and this will chart the trend.</div>`;
+
+  const rows = keys.map(k => ({ k, ...parseKey(k), st: monthStats(k) }));
+  const cur  = nowKey();
+  const best = Math.max(...rows.map(r => r.st.pct));
+  const s1   = SERIES[theme()][0];
+
+  /* ---- column chart: one measure, one series, one colour ---- */
+  let chart = `
+    <div class="cmp-sec">
+      <p class="cmp-title">Adherence by month</p>
+      <p class="cmp-sub">Share of possible ticks actually logged. The current month counts only
+         the days elapsed so far, so it is comparable with completed months.</p>
+      <div class="cmp-chart" style="--series1:${s1}">
+        <div class="cmp-yaxis"><span>100%</span><span>50%</span><span>0%</span></div>
+        <div class="cmp-main">
+          <div class="cmp-plot">
+            <div class="cmp-gl" style="top:0"></div>
+            <div class="cmp-gl" style="top:50%"></div>
+            <div class="cmp-gl base" style="bottom:0"></div>
+            <div class="cmp-cols">`;
+
+  for(const r of rows){
+    const isCur  = r.k === cur;
+    const isPeak = r.st.pct === best;
+    chart += `<button class="cmp-col${isCur?" cur":""}" type="button">
+        ${isPeak ? `<span class="cmp-peak" style="bottom:calc(${r.st.pct}% + 6px)">${r.st.pct}%</span>` : ""}
+        <span class="cmp-tip">${ABBR[r.m]} ${r.y} — ${r.st.pct}%
+          <small>${r.st.total}/${r.st.possible} ticks · ${r.st.full} full day${r.st.full===1?"":"s"}</small></span>
+        <span class="cmp-bar" style="height:${r.st.pct}%"></span>
+      </button>`;
+  }
+
+  chart += `</div></div><div class="cmp-xaxis">`;
+  for(const r of rows)
+    chart += `<div class="cmp-xt${r.k===cur?" cur":""}"><b>${ABBR[r.m]}</b>${r.y}</div>`;
+  chart += `</div></div></div></div>`;
+
+  /* ---- heatmap = the table view: every cell carries its number ---- */
+  const seen = new Map();                       // id -> {name, slot}
+  for(let i = rows.length - 1; i >= 0; i--)     // newest month wins the name
+    for(const h of rows[i].st.habits)
+      if(!seen.has(h.id)) seen.set(h.id, h);
+  const cols = [...seen.entries()];
+
+  let table = `
+    <div class="cmp-sec">
+      <p class="cmp-title">Every habit, every month</p>
+      <p class="cmp-sub">Percentage of days that habit was ticked. Darker means higher.
+         <b>—</b> means the habit was not being tracked that month.</p>
+      <div class="cmp-scroll"><table class="cmp"><thead><tr>
+        <th class="rh">Month</th><th>All</th><th>Full days</th>`;
+  for(const [,h] of cols)
+    table += `<th title="${esc(h.name)}"><span class="sw" style="background:${hue(h.slot)}"></span>${esc(h.name)}</th>`;
+  table += `</tr></thead><tbody>`;
+
+  for(const r of rows){
+    const [bg, ink] = heat(r.st.pct);
+    table += `<tr class="${r.k===cur?"cur":""}">
+      <td class="rh">${ABBR[r.m]} ${r.y}</td>
+      <td style="background:${bg};color:${ink}">${r.st.pct}%</td>
+      <td class="plain">${r.st.full}</td>`;
+    for(const [id] of cols){
+      if(!r.st.habits.some(h => h.id === id)){ table += `<td class="na">—</td>`; continue; }
+      const c = r.st.per.get(id) || 0;
+      const p = r.st.elapsed ? Math.round(c / r.st.elapsed * 100) : 0;
+      const [b2, i2] = heat(p);
+      table += `<td style="background:${b2};color:${i2}" title="${c} of ${r.st.elapsed} days">${p}%</td>`;
+    }
+    table += `</tr>`;
+  }
+  table += `</tbody></table></div>
+    <div class="cmp-legend"><span>0%</span><span class="ramp">
+      ${HEAT[theme()].map(([c]) => `<i style="background:${c}"></i>`).join("")}
+    </span><span>100%</span></div></div>`;
+
+  /* ---- one-line read of the trend ---- */
+  const last = rows[rows.length-1], prev = rows[rows.length-2];
+  const d = last.st.pct - prev.st.pct;
+  const verdict = d === 0 ? `level with ${ABBR[prev.m]}`
+                : `${Math.abs(d)} point${Math.abs(d)===1?"":"s"} ${d>0?"above":"below"} ${ABBR[prev.m]}`;
+  const lead = `<p class="cmp-sub" style="margin:-4px 0 18px">
+      <b>${ABBR[last.m]} ${last.y}</b> is running at <b>${last.st.pct}%</b> — ${verdict}.
+      Best month so far: <b>${best}%</b>.</p>`;
+
+  return lead + chart + table;
+}
+
+function openCompare(){
+  const html = buildCompare();
+  $("#cmpBody").innerHTML = html;
+  $("#cmpReport").innerHTML =
+    `<div class="cmp-head"><h1>Habit comparison</h1></div>` + html;
+  $("#cmpDlg").showModal();
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function toggle(day, hid){
+  const key = viewKey();
+  setDone(key, day, hid, !isDone(key, day, hid));
+  selDay = day;
+  render();
+}
+
+/** The big button: tick every habit for the day, or untick every habit. */
+function toggleWholeDay(){
+  const key = viewKey(), hs = md(key).habits;
+  if(!hs.length) return;
+  const wasFull = dayDone(key, selDay) === hs.length;
+  for(const h of hs) setDone(key, selDay, h.id, !wasFull);
+  render();
+  if(!wasFull){
+    [...$("#segs").children].forEach((s,i) => {
+      setTimeout(() => { s.classList.add("pop"); setTimeout(() => s.classList.remove("pop"), 240); }, i * 45);
+    });
+    toast("🔋 Battery full — every habit done");
+  }
+}
+
+function goMonth(delta){
+  const d = new Date(view.y, view.m + delta, 1);
+  view = { y:d.getFullYear(), m:d.getMonth() };
+  const t = new Date();
+  selDay = (view.y===t.getFullYear() && view.m===t.getMonth()) ? t.getDate() : 1;
+  render();
+}
+function goToday(){
+  const t = new Date();
+  view = { y:t.getFullYear(), m:t.getMonth() };
+  selDay = t.getDate();
+  render();
+}
+/** Move the selection by N days, rolling into the neighbouring month (or year) as needed. */
+function moveDay(delta){
+  const d = new Date(view.y, view.m, selDay + delta);   // Date normalises the overflow
+  view   = { y:d.getFullYear(), m:d.getMonth() };
+  selDay = d.getDate();
+  render();
+}
+
+/* ============================================================
+   FILE SAVE / LOAD
+   ============================================================ */
+function payload(){
+  return JSON.stringify({ app:"DHT", version:3, exported:new Date().toISOString(),
+                          weekStart:state.weekStart, quota:state.quota,
+                          master:state.master, months:state.months }, null, 2);
+}
+
+async function saveFile(){
+  const text = payload();
+  if(window.showSaveFilePicker){
+    try{
+      if(!fileHandle){
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName:"habits.json",
+          types:[{description:"Habit data", accept:{"application/json":[".json"]}}]
+        });
+      }
+      const w = await fileHandle.createWritable();
+      await w.write(text); await w.close();
+      toast("Saved to " + fileHandle.name);
+      return;
+    }catch(e){
+      if(e && e.name === "AbortError") return;
+      fileHandle = null;
+    }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], {type:"application/json"}));
+  a.download = "habits.json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast("Downloaded habits.json");
+}
+
+function loadFile(){
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".json,application/json";
+  inp.onchange = () => {
+    const f = inp.files[0]; if(!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try{
+        const data = JSON.parse(rd.result);
+        if(!data || !Array.isArray(data.master) || typeof data.months !== "object")
+          throw new Error("not a DHT file");
+        pendingImport = migrate(data);
+        const mn = Object.keys(data.months).length;
+        let checks = 0;
+        for(const k in data.months)
+          for(const d in data.months[k].entries) checks += data.months[k].entries[d].length;
+        $("#loadInfo").innerHTML =
+          `<b>${esc(f.name)}</b> — ${data.master.length} habits, ${mn} month${mn===1?"":"s"}, ${checks} logged checks.`;
+        $("#loadDlg").showModal();
+      }catch(err){ toast("⚠ That file isn't a habit backup"); }
+    };
+    rd.readAsText(f);
+  };
+  inp.click();
+}
+
+/**
+ * Union `inc` into `base`, in place. Additive only — a tick present on either side
+ * survives, and running it twice changes nothing.
+ *
+ * Deliberate limitation: a union cannot express a *removal*. If you untick something on
+ * one device, merging an older copy from another device resurrects it. That is why sync
+ * only merges on a genuine conflict; the ordinary path adopts the newer side wholesale.
+ */
+function mergeInto(base, inc){
+  if(base.quota == null && typeof inc.quota === "number") base.quota = inc.quota;
+  for(const k in (inc.months || {})){
+    const from = inc.months[k];
+    if(!base.months[k]){ base.months[k] = { habits:from.habits||[], entries:from.entries||{} }; continue; }
+    const cur = base.months[k];
+    const have = new Set(cur.habits.map(h => h.id));
+    for(const h of (from.habits || [])) if(!have.has(h.id)) cur.habits.push(h);
+    for(const day in (from.entries || {})){
+      const a = cur.entries[day] || (cur.entries[day] = []);
+      for(const id of from.entries[day]) if(a.indexOf(id) === -1) a.push(id);
+    }
+  }
+  const have = new Set(base.master.map(h => h.id));
+  for(const h of (inc.master || [])) if(!have.has(h.id)) base.master.push(h);
+  return base;
+}
+
+function applyImport(mode){
+  const d = pendingImport; if(!d) return;
+  if(mode === "replace"){
+    state = migrate({ version:3, weekStart:d.weekStart, quota:d.quota,
+                      master:d.master, months:d.months });
+  }else{
+    mergeInto(state, d);
+  }
+  save(); pendingImport = null;
+  $("#loadDlg").close();
+  render();
+  toast(mode === "replace" ? "Data replaced" : "Data merged");
+}
+
+/* ============================================================
+   SYNC  —  optional. GitHub private repo as the datastore.
+   ------------------------------------------------------------
+   Off by default: with no config the app is exactly as local as it ever was.
+   When configured, localStorage stays the source of truth for the UI and the
+   remote is reconciled around it, so the app still works with no network.
+   The Contents API hands back a `sha` per read and refuses a write against a
+   stale one, which gives optimistic concurrency for free.
+   ============================================================ */
+const CFG_KEY  = "dht.sync";      // {owner,repo,path,branch,tok:{salt,iv,ct}} — no plaintext secret
+const META_KEY = "dht.syncmeta";  // {sha,at}
+
+let cfg = null;        // config as stored (token still encrypted)
+let token = null;      // plaintext PAT, memory only, never persisted
+let syncState = "off"; // off | locked | syncing | ok | error | offline
+let syncNote = "";
+let pushTimer = null, pushing = false, dirty = false;
+
+const readJSON  = (k, d) => { try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } };
+const writeJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+const meta      = () => readJSON(META_KEY, { sha:null, at:0 });
+
+/* ---------- passphrase-encrypted token (AES-GCM + PBKDF2) ---------- */
+/* Chunked: String.fromCharCode(...bytes) overflows the call stack on a large payload,
+   which a few years of history comfortably reaches. */
+function bytesToB64(bytes){
+  let s = "";
+  for(let i = 0; i < bytes.length; i += 0x8000)
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+const b64   = buf => bytesToB64(new Uint8Array(buf));
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+async function keyFrom(pass, salt){
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass),
+                                             "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name:"PBKDF2", salt, iterations:250000, hash:"SHA-256" },
+    base, { name:"AES-GCM", length:256 }, false, ["encrypt","decrypt"]);
+}
+async function sealToken(tok, pass){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const key  = await keyFrom(pass, salt);
+  const ct   = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, key,
+                                            new TextEncoder().encode(tok));
+  return { salt:b64(salt), iv:b64(iv), ct:b64(ct) };
+}
+async function openToken(sealed, pass){
+  const key = await keyFrom(pass, unb64(sealed.salt));
+  const pt  = await crypto.subtle.decrypt({ name:"AES-GCM", iv:unb64(sealed.iv) }, key,
+                                           unb64(sealed.ct));
+  return new TextDecoder().decode(pt);
+}
+
+/* ---------- GitHub Contents API ---------- */
+const utf8b64 = s => bytesToB64(new TextEncoder().encode(s));
+const b64utf8 = s => new TextDecoder().decode(unb64(s.replace(/\s/g, "")));
+const apiURL  = () => `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${cfg.path}`;
+const headers = () => ({ Authorization:`Bearer ${token}`,
+                         Accept:"application/vnd.github+json",
+                         "X-GitHub-Api-Version":"2022-11-28" });
+
+/** @returns {{data:object, sha:string}|null} null when the file does not exist yet. */
+async function ghPull(){
+  const r = await fetch(`${apiURL()}?ref=${encodeURIComponent(cfg.branch)}&t=${Date.now()}`,
+                        { headers:headers(), cache:"no-store" });
+  if(r.status === 404) return null;
+  if(!r.ok) throw new Error(`GitHub read failed (${r.status})`);
+  const j = await r.json();
+  return { data: JSON.parse(b64utf8(j.content)), sha: j.sha };
+}
+
+/** @returns new sha. Throws an error tagged `.conflict` when the sha was stale. */
+async function ghPush(text, sha){
+  const body = { message:`habits: ${new Date().toISOString().slice(0,16).replace("T"," ")}`,
+                 content: utf8b64(text), branch: cfg.branch };
+  if(sha) body.sha = sha;
+  const r = await fetch(apiURL(), { method:"PUT", headers:headers(), body:JSON.stringify(body) });
+  if(r.status === 409 || r.status === 422){
+    const e = new Error("Remote changed since last read"); e.conflict = true; throw e;
+  }
+  if(!r.ok) throw new Error(`GitHub write failed (${r.status})`);
+  return (await r.json()).content.sha;
+}
+
+/* ---------- reconcile ---------- */
+const snapshot = () => JSON.parse(payload());
+
+/**
+ * Bring local and remote together.
+ *  - remote missing            -> push what we have
+ *  - remote sha unchanged      -> push only if we have local edits
+ *  - remote moved, local clean -> adopt remote wholesale (this is what lets an untick travel)
+ *  - remote moved, local dirty -> union merge, then push
+ */
+async function reconcile(){
+  const remote = await ghPull();
+  const m = meta();
+
+  if(!remote){
+    const sha = await ghPush(payload(), null);
+    writeJSON(META_KEY, { sha, at:Date.now() });
+    dirty = false;
+    return "created";
+  }
+
+  if(remote.sha === m.sha){
+    if(!dirty) return "clean";
+    const sha = await ghPush(payload(), remote.sha);
+    writeJSON(META_KEY, { sha, at:Date.now() });
+    dirty = false;
+    return "pushed";
+  }
+
+  if(!dirty){
+    state = migrate(remote.data);
+    saveLocal();
+    writeJSON(META_KEY, { sha:remote.sha, at:Date.now() });
+    render();
+    return "adopted";
+  }
+
+  mergeInto(state, migrate(remote.data));
+  saveLocal();
+  const sha = await ghPush(payload(), remote.sha);
+  writeJSON(META_KEY, { sha, at:Date.now() });
+  dirty = false;
+  render();
+  return "merged";
+}
+
+async function syncNow(quiet){
+  if(!cfg || !token){ return; }
+  if(pushing) return;
+  pushing = true;
+  setSync("syncing");
+  try{
+    let out;
+    try{ out = await reconcile(); }
+    catch(e){
+      if(!e.conflict) throw e;
+      dirty = true;                      // someone wrote between our read and write
+      writeJSON(META_KEY, { sha:null, at:0 });
+      out = await reconcile();
+    }
+    setSync("ok", out);
+    if(!quiet && (out === "merged" || out === "adopted"))
+      toast(out === "merged" ? "Merged with the copy on GitHub" : "Pulled newer data from GitHub");
+  }catch(e){
+    const off = (typeof navigator !== "undefined" && navigator.onLine === false);
+    setSync(off ? "offline" : "error", e.message);
+    if(!quiet) toast("⚠ " + (off ? "Offline — will retry" : e.message));
+  }finally{
+    pushing = false;
+  }
+}
+
+/** Called from save(): note the local edit and push shortly after you stop clicking. */
+function scheduleSync(){
+  if(!cfg || !token) return;
+  dirty = true;
+  setSync("syncing");
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => syncNow(true), 2500);
+}
+
+function setSync(s, note){
+  syncState = s; syncNote = note || "";
+  const el = $("#syncBtn");
+  const label = { off:"Local only", locked:"Locked", syncing:"Syncing…",
+                  ok:"Synced", error:"Sync error", offline:"Offline" }[s];
+  el.className = "btn sync-chip s-" + s;
+  el.innerHTML = `<i></i>${label}`;
+  el.title = note ? `${label} — ${note}` : label;
+}
+
+/* ---------- config lifecycle ---------- */
+function loadCfg(){
+  cfg = readJSON(CFG_KEY, null);
+  if(!cfg){ setSync("off"); return; }
+  setSync("locked");
+}
+
+async function unlock(pass){
+  token = await openToken(cfg.tok, pass);          // throws on a wrong passphrase
+  setSync("ok");
+  await syncNow(true);
+}
+
+function disconnect(){
+  localStorage.removeItem(CFG_KEY);
+  localStorage.removeItem(META_KEY);
+  cfg = null; token = null; dirty = false;
+  setSync("off");
+  toast("Disconnected — this browser is local-only again");
+}
+
+/* ============================================================
+   HABITS EDITOR
+   ============================================================ */
+let draft = null;
+
+function openEditor(){
+  const key = viewKey(), forward = key >= nowKey();
+  draft = md(key).habits.map(h => ({...h}));
+  $("#edMonth").textContent = `${MONTHS[view.m]} ${view.y}`;
+  $("#edNote").innerHTML = forward
+    ? `Changes apply to <b>${MONTHS[view.m]} ${view.y}</b> and become the default for new months. Earlier months keep their own list and are untouched.`
+    : `<b>${MONTHS[view.m]} ${view.y}</b> is in the past, so changes here stay in that month only — your default list for new months is not affected.`;
+  drawEditor();
+  $("#editDlg").showModal();
+}
+
+function drawEditor(){
+  $("#edList").innerHTML = draft.map((h,i) => `
+    <div class="hedit" data-i="${i}">
+      <button class="swatch" style="background:${hue(h.slot)}" data-act="color" title="Next colour"></button>
+      <input type="text" value="${esc(h.name)}" data-act="name" placeholder="Habit name" maxlength="40">
+      <button class="mini" data-act="up"   title="Move up"   ${i===0?"disabled":""}>▲</button>
+      <button class="mini" data-act="down" title="Move down" ${i===draft.length-1?"disabled":""}>▼</button>
+      <button class="mini del" data-act="del" title="Remove">✕</button>
+    </div>`).join("") || `<div class="empty-note">No habits yet — add your first one below.</div>`;
+}
+
+function commitDraft(){
+  const key = viewKey();
+  const clean = draft.map(h => ({ id:h.id, name:(h.name||"").trim() || "Untitled", slot:h.slot }));
+  materialize(key).habits = clean;
+  if(key >= nowKey()) state.master = clean.map(h => ({...h}));
+  save();
+  render();
+}
+
+/* ============================================================
+   EVENTS
+   ============================================================ */
+$("#prevM").onclick    = () => goMonth(-1);
+$("#nextM").onclick    = () => goMonth(1);
+$("#todayBtn").onclick = goToday;
+$("#pdfBtn").onclick   = () => { document.body.removeAttribute("data-print"); window.print(); };
+$("#saveBtn").onclick  = saveFile;
+$("#loadBtn").onclick  = loadFile;
+$("#editBtn").onclick  = openEditor;
+$("#cmpBtn").onclick   = openCompare;
+$("#helpBtn").onclick  = () => $("#helpDlg").showModal();
+$("#fillBtn").onclick  = toggleWholeDay;
+
+$("#cmpPrint").onclick = () => {
+  document.body.dataset.print = "compare";
+  $("#cmpDlg").close();
+  setTimeout(() => {
+    window.print();
+    document.body.removeAttribute("data-print");
+  }, 60);
+};
+
+$("#themeBtn").onclick = () => {
+  document.documentElement.dataset.theme = theme() === "dark" ? "light" : "dark";
+  localStorage.setItem(LS_THEME, document.documentElement.dataset.theme);
+  render();                                   // series + heat colours are mode-specific
+  if($("#cmpDlg").open) $("#cmpBody").innerHTML = buildCompare();
+};
+
+$("#sheet").addEventListener("click", e => {
+  const cell = e.target.closest(".cell");
+  if(cell){ toggle(+cell.dataset.day, cell.dataset.h); return; }
+  const row = e.target.closest("tr[data-day]");
+  if(row){ selDay = +row.dataset.day; render(); }
+});
+
+/* ---------- sync dialog ---------- */
+function openSync(){
+  const mode = !cfg ? "setup" : (token ? "on" : "unlock");
+  $("#syncSetup").style.display  = mode === "setup"  ? "" : "none";
+  $("#syncUnlock").style.display = mode === "unlock" ? "" : "none";
+  $("#syncOn").style.display     = mode === "on"     ? "" : "none";
+  $("#syncConnect").style.display   = mode === "setup"  ? "" : "none";
+  $("#syncUnlockBtn").style.display = mode === "unlock" ? "" : "none";
+  $("#syncNowBtn").style.display    = mode === "on"     ? "" : "none";
+  $("#syncOff").style.display       = mode === "setup"  ? "none" : "";
+  $("#syncErr").textContent = $("#unlockErr").textContent = "";
+
+  if(mode === "on"){
+    $("#onRepo").textContent = `${cfg.owner}/${cfg.repo} · ${cfg.path}`;
+    const at = meta().at;
+    $("#onWhen").textContent = at ? "last synced " + new Date(at).toLocaleString() : "not synced yet";
+  }
+  if(mode === "setup" && cfg){
+    $("#cfgRepo").value = `${cfg.owner}/${cfg.repo}`;
+    $("#cfgPath").value = cfg.path; $("#cfgBranch").value = cfg.branch;
+  }
+  $("#syncDlg").showModal();
+  setTimeout(() => { (mode === "unlock" ? $("#unlockPass") : $("#cfgRepo")).focus(); }, 30);
+}
+
+$("#syncBtn").onclick = openSync;
+
+$("#syncConnect").onclick = async () => {
+  const err = $("#syncErr");
+  const repo = $("#cfgRepo").value.trim().replace(/^https?:\/\/github\.com\//, "").replace(/\.git$/, "");
+  const [owner, name] = repo.split("/");
+  const tok  = $("#cfgTok").value.trim();
+  const pass = $("#cfgPass").value;
+
+  if(!owner || !name)                 return err.textContent = "Repository must look like owner/repo.";
+  if(!tok)                            return err.textContent = "Paste an access token.";
+  if(pass.length < 6)                 return err.textContent = "Use a passphrase of at least 6 characters.";
+  if(pass !== $("#cfgPass2").value)   return err.textContent = "The two passphrases do not match.";
+  if(!(window.crypto && crypto.subtle))
+    return err.textContent = "This browser will not expose WebCrypto here — open the app over https.";
+
+  err.textContent = "Checking…";
+  const draftCfg = { owner, repo:name, path:$("#cfgPath").value.trim() || "habits.json",
+                     branch:$("#cfgBranch").value.trim() || "main" };
+  const prev = cfg, prevTok = token;
+  cfg = draftCfg; token = tok;
+  try{
+    await ghPull();                                   // proves repo + token + branch are good
+  }catch(e){
+    cfg = prev; token = prevTok;
+    return err.textContent = e.message + " — check the repo name, branch and token scope.";
+  }
+  cfg.tok = await sealToken(tok, pass);
+  writeJSON(CFG_KEY, cfg);
+  writeJSON(META_KEY, { sha:null, at:0 });
+  dirty = true;                                        // make sure local data reaches the repo
+  $("#syncDlg").close();
+  setSync("ok");
+  await syncNow();
+  toast("Connected to " + owner + "/" + name);
+};
+
+$("#syncUnlockBtn").onclick = async () => {
+  try{
+    await unlock($("#unlockPass").value);
+    $("#unlockPass").value = "";
+    $("#syncDlg").close();
+  }catch(e){
+    $("#unlockErr").textContent = "That passphrase did not work.";
+  }
+};
+$("#unlockPass").addEventListener("keydown", e => { if(e.key === "Enter") $("#syncUnlockBtn").click(); });
+
+$("#syncNowBtn").onclick = () => { $("#syncDlg").close(); syncNow(); };
+$("#syncOff").onclick = () => {
+  if(confirm("Disconnect this browser from GitHub?\n\nYour data stays in the repo and in this browser — only the saved token is removed.")){
+    disconnect(); $("#syncDlg").close();
+  }
+};
+
+window.addEventListener("online",  () => { if(cfg && token) syncNow(true); });
+window.addEventListener("offline", () => { if(cfg) setSync("offline"); });
+
+/* week: day bars jump to that day (and month), quota is edited in place */
+$("#wkDots").addEventListener("click", e => {
+  const b = e.target.closest(".wkd"); if(!b) return;
+  view = { y:+b.dataset.y, m:+b.dataset.m };
+  selDay = +b.dataset.d;
+  render();
+});
+$("#wkQuota").addEventListener("input", e => {
+  const v = parseInt(e.target.value, 10);
+  state.quota = (Number.isFinite(v) && v > 0) ? v : null;
+  save(); render();
+});
+$("#wkRange").onclick = () => {
+  state.weekStart = state.weekStart === 1 ? 0 : 1;
+  save(); render();
+  toast(state.weekStart === 1 ? "Weeks start on Monday" : "Weeks start on Sunday");
+};
+
+/* battery segments stay the one-at-a-time control */
+$("#segs").addEventListener("click", e => {
+  const s = e.target.closest(".seg"); if(!s) return;
+  const key = viewKey(), hs = md(key).habits;
+  if(!hs.length) return;
+  const target = +s.dataset.i + 1;
+  const cur = dayDone(key, selDay);
+  const want = (target === cur) ? target - 1 : target;   // click the top filled segment to un-fill it
+  if(want > cur){
+    for(const h of hs){
+      if(dayDone(key, selDay) >= want) break;
+      if(!isDone(key, selDay, h.id)) setDone(key, selDay, h.id, true);
+    }
+  }else{
+    for(let i = hs.length - 1; i >= 0 && dayDone(key, selDay) > want; i--)
+      if(isDone(key, selDay, hs[i].id)) setDone(key, selDay, hs[i].id, false);
+  }
+  render();
+});
+
+/* editor */
+$("#edAdd").onclick = () => {
+  draft.push({ id:uid(), name:"", slot:draft.length % 8 });
+  drawEditor();
+  const inputs = $("#edList").querySelectorAll('input[data-act="name"]');
+  if(inputs.length) inputs[inputs.length-1].focus();
+  commitDraft();
+};
+$("#edList").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if(!b || b.tagName === "INPUT") return;
+  const i = +b.closest(".hedit").dataset.i, act = b.dataset.act;
+  if(act === "color") draft[i].slot = (draft[i].slot + 1) % 8;
+  else if(act === "up"   && i > 0)              [draft[i-1],draft[i]] = [draft[i],draft[i-1]];
+  else if(act === "down" && i < draft.length-1) [draft[i+1],draft[i]] = [draft[i],draft[i+1]];
+  else if(act === "del"){
+    if(!confirm(`Remove "${draft[i].name || "this habit"}" from ${MONTHS[view.m]} ${view.y}?\n\nIts ticks are kept, so re-adding it restores them.`)) return;
+    draft.splice(i,1);
+  }
+  drawEditor(); commitDraft();
+});
+$("#edList").addEventListener("input", e => {
+  const inp = e.target.closest('input[data-act="name"]'); if(!inp) return;
+  draft[+inp.closest(".hedit").dataset.i].name = inp.value;
+  commitDraft();
+});
+
+/* dialogs */
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => b.closest("dialog").close());
+$("#doMerge").onclick   = () => applyImport("merge");
+$("#doReplace").onclick = () => {
+  if(confirm("Replace everything stored in this browser with the file's contents?\n\nThis cannot be undone."))
+    applyImport("replace");
+};
+$("#loadDlg").addEventListener("close", () => { pendingImport = null; });
+
+/* keyboard */
+document.addEventListener("keydown", e => {
+  if(document.querySelector("dialog[open]")) return;
+  const tag = (e.target.tagName || "").toLowerCase();
+  if(tag === "input" || tag === "textarea") return;
+
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s"){ e.preventDefault(); saveFile(); return; }
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+
+  const hs = md(viewKey()).habits;
+  if(/^[1-9]$/.test(e.key)){
+    const h = hs[+e.key - 1];
+    if(h){ e.preventDefault(); toggle(selDay, h.id); }
+    return;
+  }
+  switch(e.key){
+    case "Enter": case " ":
+      if(tag === "button") return;            // let a focused button fire its own click
+      e.preventDefault(); toggleWholeDay(); break;
+    case "ArrowDown": e.preventDefault(); moveDay(1);  break;
+    case "ArrowUp":   e.preventDefault(); moveDay(-1); break;
+    case "PageDown":  e.preventDefault(); goMonth(1);  break;
+    case "PageUp":    e.preventDefault(); goMonth(-1); break;
+    case "t": case "T": goToday(); break;
+    case "c": case "C": openCompare(); break;
+    case "?": $("#helpDlg").showModal(); break;
+  }
+});
+
+/* toast */
+let toastT;
+function toast(msg){
+  const el = $("#toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+/* keep two open tabs in sync */
+window.addEventListener("storage", e => {
+  if(e.key === LS_KEY){ state = load(); render(); }
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+(function boot(){
+  const saved = localStorage.getItem(LS_THEME);
+  document.documentElement.dataset.theme =
+    saved || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+
+  state = load();
+  const t = new Date();
+  view = { y:t.getFullYear(), m:t.getMonth() };
+  selDay = t.getDate();
+  render();
+  saveLocal();                 // persist the seed on a first run, without marking it dirty
+
+  loadCfg();                   // "Local only" unless a repo was configured in this browser
+  if(cfg) setTimeout(openSync, 200);
+})();
+</script>
+</body>
+</html>
