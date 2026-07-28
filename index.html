@@ -1877,7 +1877,13 @@ $("#syncConnect").onclick = async () => {
   cfg.tok = await sealToken(tok, pass);
   writeJSON(CFG_KEY, cfg);
   writeJSON(META_KEY, { sha:null, at:0 });
-  dirty = true;                                        // make sure local data reaches the repo
+
+  /* Does THIS browser hold anything worth keeping?
+     A browser that has never logged a tick still has the five seeded habits sitting in
+     master — brand-new ids, no history. Marking that dirty would union those seeds into
+     the real data and silently duplicate every habit. So: push only when there is genuine
+     history here, otherwise stay clean and let reconcile() adopt the repo wholesale. */
+  dirty = trackedMonths().length > 0;
   $("#syncDlg").close();
   setSync("ok");
   await syncNow();
