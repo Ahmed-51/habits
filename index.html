@@ -256,7 +256,14 @@ aside{display:flex;flex-direction:column;gap:16px;position:sticky;top:74px}
 .sync-chip.s-ok i{background:var(--good)}
 .sync-chip.s-syncing i{background:var(--accent);animation:blip 1.1s ease-in-out infinite}
 .sync-chip.s-error i{background:#e34948}
-.sync-chip.s-offline i,.sync-chip.s-locked i{background:#eda100}
+.sync-chip.s-offline i,.sync-chip.s-locked i,.sync-chip.s-pending i{background:#eda100}
+.sync-chip.s-pending{border-color:#eda100}
+
+.crow{display:flex;align-items:flex-start;gap:9px;margin:14px 0 4px}
+.crow input{margin:2px 0 0;flex:none;width:15px;height:15px;accent-color:var(--accent)}
+.crow label{font-size:12.5px;line-height:1.5}
+.crow label b{display:block;font-weight:600}
+.crow label span{color:var(--dim);font-size:11.5px}
 @keyframes blip{50%{opacity:.25}}
 
 .frow{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center;margin-bottom:10px}
@@ -526,6 +533,8 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
       <button class="btn" id="loadBtn" title="Load habits.json">↑ Load</button>
       <button class="btn primary" id="pdfBtn" title="Print / Save as PDF">📄 PDF</button>
       <button class="btn sync-chip s-off" id="syncBtn" title="Sync"><i></i>Local only</button>
+      <button class="btn primary" id="pushBtn" style="display:none"
+              title="Commit your changes to GitHub">↑ Push</button>
       <button class="btn icon" id="themeBtn" title="Toggle theme">◑</button>
       <button class="btn icon" id="helpBtn" title="Keyboard shortcuts">?</button>
     </div>
@@ -693,10 +702,12 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
         <input id="cfgPass" type="password" placeholder="encrypts the token in this browser"></div>
       <div class="frow"><label for="cfgPass2">Repeat</label>
         <input id="cfgPass2" type="password"></div>
-      <p class="note" style="margin-top:12px">
-        The token is encrypted with your passphrase before it touches storage, so it is never
-        held in the clear. You will be asked for the passphrase once per browser session.
-      </p>
+      <div class="crow">
+        <input type="checkbox" id="cfgRemember">
+        <label for="cfgRemember"><b>Keep me unlocked on this device</b>
+          <span>Skips the passphrase from now on. Convenient, but the token then sits in this
+          browser's storage in the clear — leave it off on a shared machine.</span></label>
+      </div>
       <p class="err" id="syncErr"></p>
     </div>
 
@@ -704,15 +715,37 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
       <p class="note">Enter your passphrase to unlock this browser's access token.</p>
       <div class="frow"><label for="unlockPass">Passphrase</label>
         <input id="unlockPass" type="password" autocomplete="current-password"></div>
+      <div class="crow">
+        <input type="checkbox" id="unlockRemember">
+        <label for="unlockRemember"><b>Keep me unlocked on this device</b>
+          <span>Stop asking entirely. Otherwise you are asked once per tab — a reload will not
+          re-prompt, but closing the tab forgets it.</span></label>
+      </div>
       <p class="err" id="unlockErr"></p>
     </div>
 
     <div id="syncOn" style="display:none">
       <p class="note">Connected to <b id="onRepo">—</b> · <span id="onWhen">—</span></p>
-      <p class="note">
-        Edits push a couple of seconds after you stop clicking. If another device wrote
-        first, the newer copy is pulled in and merged rather than overwritten. localStorage
-        keeps working with no network, and syncs when you are back.
+
+      <p class="note" style="margin-bottom:6px"><b>When to commit</b></p>
+      <div class="crow">
+        <input type="radio" name="syncmode" id="modeAuto" value="auto">
+        <label for="modeAuto"><b>Automatically</b>
+          <span>A couple of seconds after you stop clicking, so a burst of ticks becomes one
+          commit rather than one per checkbox.</span></label>
+      </div>
+      <div class="crow">
+        <input type="radio" name="syncmode" id="modeManual" value="manual">
+        <label for="modeManual"><b>Only when I press Push</b>
+          <span>A <b>↑ Push</b> button appears in the toolbar whenever you have unsaved
+          changes, and you get one commit per press. You will be warned if you close the tab
+          with work not pushed.</span></label>
+      </div>
+
+      <p class="note" style="margin-top:14px">
+        Every write to GitHub is a commit — that is simply how the API stores a file, and it
+        is what gives you a revertible history. The setting above controls how often, not
+        whether. Reading is free and always happens on load.
       </p>
     </div>
 
@@ -1559,8 +1592,9 @@ function applyImport(mode){
    The Contents API hands back a `sha` per read and refuses a write against a
    stale one, which gives optimistic concurrency for free.
    ============================================================ */
-const CFG_KEY  = "dht.sync";      // {owner,repo,path,branch,tok:{salt,iv,ct}} — no plaintext secret
+const CFG_KEY  = "dht.sync";      // {owner,repo,path,branch,mode,remember,tok:{salt,iv,ct}}
 const META_KEY = "dht.syncmeta";  // {sha,at}
+const TOK_KEY  = "dht.tok";       // decrypted token cache — sessionStorage by default
 
 let cfg = null;        // config as stored (token still encrypted)
 let token = null;      // plaintext PAT, memory only, never persisted
@@ -1709,10 +1743,14 @@ async function syncNow(quiet){
   }
 }
 
-/** Called from save(): note the local edit and push shortly after you stop clicking. */
+/**
+ * Called from save(). In auto mode this debounces a push so a burst of clicks becomes one
+ * commit; in manual mode it only lights the Push button and waits for you.
+ */
 function scheduleSync(){
   if(!cfg || !token) return;
   dirty = true;
+  if(cfg.mode === "manual"){ setSync("pending"); return; }
   setSync("syncing");
   clearTimeout(pushTimer);
   pushTimer = setTimeout(() => syncNow(true), 2500);
@@ -1721,22 +1759,46 @@ function scheduleSync(){
 function setSync(s, note){
   syncState = s; syncNote = note || "";
   const el = $("#syncBtn");
-  const label = { off:"Local only", locked:"Locked", syncing:"Syncing…",
+  const label = { off:"Local only", locked:"Locked", syncing:"Syncing…", pending:"Unsaved",
                   ok:"Synced", error:"Sync error", offline:"Offline" }[s];
   el.className = "btn sync-chip s-" + s;
   el.innerHTML = `<i></i>${label}`;
   el.title = note ? `${label} — ${note}` : label;
+
+  const push = $("#pushBtn");
+  const show = !!(cfg && token && cfg.mode === "manual" && dirty);
+  push.style.display = show ? "" : "none";
+}
+
+/* ---------- decrypted-token cache ----------
+   Default: sessionStorage, so a reload does not re-prompt but closing the tab forgets it.
+   "Keep unlocked" moves it to localStorage — no passphrase again on this device, at the
+   cost of the token sitting there in the clear. The user's call, stated plainly. */
+function cacheToken(){
+  try{ (cfg.remember ? localStorage : sessionStorage).setItem(TOK_KEY, token); }catch(e){}
+}
+function cachedToken(){
+  try{ return localStorage.getItem(TOK_KEY) || sessionStorage.getItem(TOK_KEY); }
+  catch(e){ return null; }
+}
+function clearTokenCache(){
+  try{ localStorage.removeItem(TOK_KEY); sessionStorage.removeItem(TOK_KEY); }catch(e){}
 }
 
 /* ---------- config lifecycle ---------- */
 function loadCfg(){
   cfg = readJSON(CFG_KEY, null);
   if(!cfg){ setSync("off"); return; }
+  if(cfg.mode !== "manual") cfg.mode = "auto";
+  const cached = cachedToken();
+  if(cached){ token = cached; setSync("ok"); return; }   // reload, same tab -> no re-prompt
   setSync("locked");
 }
 
-async function unlock(pass){
+async function unlock(pass, remember){
   token = await openToken(cfg.tok, pass);          // throws on a wrong passphrase
+  if(typeof remember === "boolean"){ cfg.remember = remember; writeJSON(CFG_KEY, cfg); }
+  cacheToken();
   setSync("ok");
   await syncNow(true);
 }
@@ -1744,6 +1806,7 @@ async function unlock(pass){
 function disconnect(){
   localStorage.removeItem(CFG_KEY);
   localStorage.removeItem(META_KEY);
+  clearTokenCache();
   cfg = null; token = null; dirty = false;
   setSync("off");
   toast("Disconnected — this browser is local-only again");
@@ -1838,6 +1901,8 @@ function openSync(){
     $("#onRepo").textContent = `${cfg.owner}/${cfg.repo} · ${cfg.path}`;
     const at = meta().at;
     $("#onWhen").textContent = at ? "last synced " + new Date(at).toLocaleString() : "not synced yet";
+    $("#modeAuto").checked   = cfg.mode !== "manual";
+    $("#modeManual").checked = cfg.mode === "manual";
   }
   if(mode === "setup" && cfg){
     $("#cfgRepo").value = `${cfg.owner}/${cfg.repo}`;
@@ -1865,7 +1930,8 @@ $("#syncConnect").onclick = async () => {
 
   err.textContent = "Checking…";
   const draftCfg = { owner, repo:name, path:$("#cfgPath").value.trim() || "habits.json",
-                     branch:$("#cfgBranch").value.trim() || "main" };
+                     branch:$("#cfgBranch").value.trim() || "main",
+                     mode:"auto", remember:$("#cfgRemember").checked };
   const prev = cfg, prevTok = token;
   cfg = draftCfg; token = tok;
   try{
@@ -1884,6 +1950,7 @@ $("#syncConnect").onclick = async () => {
      the real data and silently duplicate every habit. So: push only when there is genuine
      history here, otherwise stay clean and let reconcile() adopt the repo wholesale. */
   dirty = trackedMonths().length > 0;
+  cacheToken();
   $("#syncDlg").close();
   setSync("ok");
   await syncNow();
@@ -1892,7 +1959,7 @@ $("#syncConnect").onclick = async () => {
 
 $("#syncUnlockBtn").onclick = async () => {
   try{
-    await unlock($("#unlockPass").value);
+    await unlock($("#unlockPass").value, $("#unlockRemember").checked);
     $("#unlockPass").value = "";
     $("#syncDlg").close();
   }catch(e){
@@ -1902,6 +1969,23 @@ $("#syncUnlockBtn").onclick = async () => {
 $("#unlockPass").addEventListener("keydown", e => { if(e.key === "Enter") $("#syncUnlockBtn").click(); });
 
 $("#syncNowBtn").onclick = () => { $("#syncDlg").close(); syncNow(); };
+$("#pushBtn").onclick    = () => syncNow();
+
+for(const id of ["#modeAuto", "#modeManual"]){
+  $(id).addEventListener("change", e => {
+    if(!e.target.checked) return;
+    cfg.mode = e.target.value;
+    writeJSON(CFG_KEY, cfg);
+    setSync(dirty ? (cfg.mode === "manual" ? "pending" : "syncing") : syncState);
+    if(cfg.mode === "auto" && dirty) syncNow(true);
+    toast(cfg.mode === "manual" ? "You'll push manually from now on" : "Pushing automatically");
+  });
+}
+
+/* don't let a manual-mode user walk away from unpushed work */
+window.addEventListener("beforeunload", e => {
+  if(cfg && token && cfg.mode === "manual" && dirty){ e.preventDefault(); e.returnValue = ""; }
+});
 $("#syncOff").onclick = () => {
   if(confirm("Disconnect this browser from GitHub?\n\nYour data stays in the repo and in this browser — only the saved token is removed.")){
     disconnect(); $("#syncDlg").close();
@@ -2044,7 +2128,8 @@ window.addEventListener("storage", e => {
   saveLocal();                 // persist the seed on a first run, without marking it dirty
 
   loadCfg();                   // "Local only" unless a repo was configured in this browser
-  if(cfg) setTimeout(openSync, 200);
+  if(cfg && token) syncNow(true);          // token still cached — just catch up quietly
+  else if(cfg)     setTimeout(openSync, 200);   // needs the passphrase first
 })();
 </script>
 </body>
