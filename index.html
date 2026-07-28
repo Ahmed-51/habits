@@ -114,10 +114,17 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;align-items
    SHEET (month grid) — no inner scroll, the page scrolls
    ============================================================ */
 table.sheet{border-collapse:separate;border-spacing:0;width:100%;font-variant-numeric:tabular-nums}
+/* The habit-name row pins under the toolbar. --hdr is measured in JS, because the
+   toolbar wraps to two rows on a narrow window and a hard-coded offset would tear. */
 table.sheet thead th{
-  background:var(--panel);border-bottom:1px solid var(--line);
+  position:sticky;top:var(--hdr,64px);z-index:4;
+  background:var(--panel);
+  box-shadow:0 1px 0 var(--line);        /* a border on a sticky cell scrolls away; this doesn't */
   padding:9px 6px;font-size:11px;font-weight:600;color:var(--dim);
   text-align:center;vertical-align:bottom;
+}
+table.sheet thead::after{                /* hides rows bleeding through the rounded card top */
+  content:"";position:absolute;inset:0 0 auto;height:0;
 }
 table.sheet thead th.h-day{text-align:left;padding-left:14px;width:44px}
 table.sheet thead th.h-dow{width:52px}
@@ -159,7 +166,7 @@ tfoot td.c-day{padding-left:14px;text-transform:uppercase;letter-spacing:.05em;f
 /* ============================================================
    RIGHT PANEL
    ============================================================ */
-aside{display:flex;flex-direction:column;gap:16px;position:sticky;top:74px}
+aside{display:flex;flex-direction:column;gap:16px;position:sticky;top:calc(var(--hdr,64px) + 12px)}
 
 .daypick{padding:14px 16px 4px;text-align:center}
 .daypick .big{font-size:15px;font-weight:650;letter-spacing:-.2px}
@@ -466,6 +473,7 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
   tbody tr.sel td.c-day::before{display:none}
 
   .daypick,.fillbtn{display:none}
+  table.sheet thead th{position:static;box-shadow:none;border-bottom:1px solid #c9ced8}
   .stat{padding:5px 7px}
   .stat .v{font-size:11pt}
   .stat .v small{font-size:7pt}
@@ -727,25 +735,15 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
     <div id="syncOn" style="display:none">
       <p class="note">Connected to <b id="onRepo">—</b> · <span id="onWhen">—</span></p>
 
-      <p class="note" style="margin-bottom:6px"><b>When to commit</b></p>
-      <div class="crow">
-        <input type="radio" name="syncmode" id="modeAuto" value="auto">
-        <label for="modeAuto"><b>Automatically</b>
-          <span>A couple of seconds after you stop clicking, so a burst of ticks becomes one
-          commit rather than one per checkbox.</span></label>
-      </div>
-      <div class="crow">
-        <input type="radio" name="syncmode" id="modeManual" value="manual">
-        <label for="modeManual"><b>Only when I press Push</b>
-          <span>A <b>↑ Push</b> button appears in the toolbar whenever you have unsaved
-          changes, and you get one commit per press. You will be warned if you close the tab
-          with work not pushed.</span></label>
-      </div>
-
-      <p class="note" style="margin-top:14px">
-        Every write to GitHub is a commit — that is simply how the API stores a file, and it
-        is what gives you a revertible history. The setting above controls how often, not
-        whether. Reading is free and always happens on load.
+      <p class="note">
+        <b>Nothing is ever pushed on a timer.</b> Edit as much as you like — the chip reads
+        <b>Unsaved</b> and the toolbar button becomes <b>↑ Push</b>. One press, one commit.
+        You'll be warned if you try to close the tab with work not pushed.
+      </p>
+      <p class="note">
+        When there is nothing outstanding that same button reads <b>⟳ Sync</b> and just checks
+        the repo for changes made on another device. Reading is free, so it also happens
+        automatically on load.
       </p>
     </div>
 
@@ -753,7 +751,6 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
   <div class="dlg-foot">
     <button class="btn primary" id="syncConnect">Connect</button>
     <button class="btn primary" id="syncUnlockBtn" style="display:none">Unlock</button>
-    <button class="btn" id="syncNowBtn" style="display:none">Sync now</button>
     <div class="spacer"></div>
     <button class="btn" id="syncOff" style="display:none">Disconnect</button>
     <button class="btn" data-close>Close</button>
@@ -1600,7 +1597,7 @@ let cfg = null;        // config as stored (token still encrypted)
 let token = null;      // plaintext PAT, memory only, never persisted
 let syncState = "off"; // off | locked | syncing | ok | error | offline
 let syncNote = "";
-let pushTimer = null, pushing = false, dirty = false;
+let pushing = false, dirty = false;
 
 const readJSON  = (k, d) => { try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } };
 const writeJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
@@ -1744,16 +1741,13 @@ async function syncNow(quiet){
 }
 
 /**
- * Called from save(). In auto mode this debounces a push so a burst of clicks becomes one
- * commit; in manual mode it only lights the Push button and waits for you.
+ * Called from save(). Nothing is ever pushed on a timer — this only records that there is
+ * something to push and lights the toolbar button. You decide when a commit happens.
  */
 function scheduleSync(){
   if(!cfg || !token) return;
   dirty = true;
-  if(cfg.mode === "manual"){ setSync("pending"); return; }
-  setSync("syncing");
-  clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => syncNow(true), 2500);
+  setSync("pending");
 }
 
 function setSync(s, note){
@@ -1765,9 +1759,15 @@ function setSync(s, note){
   el.innerHTML = `<i></i>${label}`;
   el.title = note ? `${label} — ${note}` : label;
 
+  /* One button, always present once connected: it commits when you have work outstanding,
+     and checks the repo for another device's changes when you don't. */
   const push = $("#pushBtn");
-  const show = !!(cfg && token && cfg.mode === "manual" && dirty);
-  push.style.display = show ? "" : "none";
+  push.style.display = (cfg && token) ? "" : "none";
+  push.className   = "btn" + (dirty ? " primary" : "");
+  push.textContent = dirty ? "↑ Push" : "⟳ Sync";
+  push.title = dirty ? "Commit your changes to GitHub"
+                     : "Check GitHub for changes made on another device";
+  measureHeader();
 }
 
 /* ---------- decrypted-token cache ----------
@@ -1789,7 +1789,6 @@ function clearTokenCache(){
 function loadCfg(){
   cfg = readJSON(CFG_KEY, null);
   if(!cfg){ setSync("off"); return; }
-  if(cfg.mode !== "manual") cfg.mode = "auto";
   const cached = cachedToken();
   if(cached){ token = cached; setSync("ok"); return; }   // reload, same tab -> no re-prompt
   setSync("locked");
@@ -1893,7 +1892,6 @@ function openSync(){
   $("#syncOn").style.display     = mode === "on"     ? "" : "none";
   $("#syncConnect").style.display   = mode === "setup"  ? "" : "none";
   $("#syncUnlockBtn").style.display = mode === "unlock" ? "" : "none";
-  $("#syncNowBtn").style.display    = mode === "on"     ? "" : "none";
   $("#syncOff").style.display       = mode === "setup"  ? "none" : "";
   $("#syncErr").textContent = $("#unlockErr").textContent = "";
 
@@ -1901,8 +1899,6 @@ function openSync(){
     $("#onRepo").textContent = `${cfg.owner}/${cfg.repo} · ${cfg.path}`;
     const at = meta().at;
     $("#onWhen").textContent = at ? "last synced " + new Date(at).toLocaleString() : "not synced yet";
-    $("#modeAuto").checked   = cfg.mode !== "manual";
-    $("#modeManual").checked = cfg.mode === "manual";
   }
   if(mode === "setup" && cfg){
     $("#cfgRepo").value = `${cfg.owner}/${cfg.repo}`;
@@ -1931,7 +1927,7 @@ $("#syncConnect").onclick = async () => {
   err.textContent = "Checking…";
   const draftCfg = { owner, repo:name, path:$("#cfgPath").value.trim() || "habits.json",
                      branch:$("#cfgBranch").value.trim() || "main",
-                     mode:"auto", remember:$("#cfgRemember").checked };
+                     remember:$("#cfgRemember").checked };
   const prev = cfg, prevTok = token;
   cfg = draftCfg; token = tok;
   try{
@@ -1968,23 +1964,11 @@ $("#syncUnlockBtn").onclick = async () => {
 };
 $("#unlockPass").addEventListener("keydown", e => { if(e.key === "Enter") $("#syncUnlockBtn").click(); });
 
-$("#syncNowBtn").onclick = () => { $("#syncDlg").close(); syncNow(); };
-$("#pushBtn").onclick    = () => syncNow();
+$("#pushBtn").onclick = () => syncNow();
 
-for(const id of ["#modeAuto", "#modeManual"]){
-  $(id).addEventListener("change", e => {
-    if(!e.target.checked) return;
-    cfg.mode = e.target.value;
-    writeJSON(CFG_KEY, cfg);
-    setSync(dirty ? (cfg.mode === "manual" ? "pending" : "syncing") : syncState);
-    if(cfg.mode === "auto" && dirty) syncNow(true);
-    toast(cfg.mode === "manual" ? "You'll push manually from now on" : "Pushing automatically");
-  });
-}
-
-/* don't let a manual-mode user walk away from unpushed work */
+/* don't let anyone walk away from unpushed work */
 window.addEventListener("beforeunload", e => {
-  if(cfg && token && cfg.mode === "manual" && dirty){ e.preventDefault(); e.returnValue = ""; }
+  if(cfg && token && dirty){ e.preventDefault(); e.returnValue = ""; }
 });
 $("#syncOff").onclick = () => {
   if(confirm("Disconnect this browser from GitHub?\n\nYour data stays in the repo and in this browser — only the saved token is removed.")){
@@ -2097,6 +2081,13 @@ document.addEventListener("keydown", e => {
   }
 });
 
+/* Measure the toolbar so the sticky sheet header sits exactly under it, whatever it wraps to. */
+function measureHeader(){
+  const h = document.querySelector("header.top");
+  if(h) document.documentElement.style.setProperty("--hdr", h.offsetHeight + "px");
+}
+window.addEventListener("resize", measureHeader);
+
 /* toast */
 let toastT;
 function toast(msg){
@@ -2125,6 +2116,7 @@ window.addEventListener("storage", e => {
   view = { y:t.getFullYear(), m:t.getMonth() };
   selDay = t.getDate();
   render();
+  measureHeader();
   saveLocal();                 // persist the seed on a first run, without marking it dirty
 
   loadCfg();                   // "Local only" unless a repo was configured in this browser
