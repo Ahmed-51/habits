@@ -75,15 +75,14 @@ header.top{
 /* navbar stat pair */
 .navstats{display:flex;align-items:center;gap:18px;padding-right:4px}
 .ns{display:flex;align-items:baseline;gap:5px;white-space:nowrap}
-.ns b{font-size:17px;font-weight:700;letter-spacing:-.4px}
+.ns b{font-size:27px;font-weight:700;letter-spacing:-1px;line-height:1}
 .ns span{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
-.ns.big b{font-size:27px;letter-spacing:-1px;line-height:1}
 .ns.hot b{color:var(--good);text-shadow:0 0 18px color-mix(in srgb,var(--good) 40%,transparent)}
 .ns.hot span{color:var(--good);opacity:.8}
 
-.monthnav{display:flex;align-items:center;gap:4px}
+.monthnav{display:flex;align-items:center;gap:10px}
 .monthnav .label{
-  min-width:162px;text-align:center;font-size:15px;font-weight:600;
+  font-size:15px;font-weight:600;
   letter-spacing:-.2px;font-variant-numeric:tabular-nums;
 }
 .actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
@@ -118,13 +117,27 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;align-items
 .headnum em{font-style:normal;font-size:10.5px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-left:4px}
 
 /* ============================================================
-   SHEET (month grid) — no inner scroll, the page scrolls
+   SHEET (month grid) — scrolls inside its own card, not the page
    ============================================================ */
+/* The card caps its height to the viewport below the toolbar and scrolls the table
+   internally. --hdr is measured in JS (toolbar wraps to two rows on a narrow window,
+   so a hard-coded offset would tear) and also sizes this cap. */
+.col-sheet .card{
+  display:flex;flex-direction:column;
+  max-height:calc(100vh - var(--hdr,64px) - 40px);
+}
+.sheet-scroll{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;
+  border-radius:0 0 var(--radius) var(--radius);   /* clip scrolled rows to the card's round bottom */
+  scrollbar-width:none;        /* Firefox */
+  -ms-overflow-style:none;     /* legacy Edge */
+}
+.sheet-scroll::-webkit-scrollbar{display:none}   /* Chromium/Safari */
+
 table.sheet{border-collapse:separate;border-spacing:0;width:100%;font-variant-numeric:tabular-nums}
-/* The habit-name row pins under the toolbar. --hdr is measured in JS, because the
-   toolbar wraps to two rows on a narrow window and a hard-coded offset would tear. */
+/* The habit-name row pins to the top of .sheet-scroll as the table scrolls inside it. */
 table.sheet thead th{
-  position:sticky;top:var(--hdr,64px);z-index:4;
+  position:sticky;top:0;z-index:4;
   background:var(--panel);
   box-shadow:0 1px 0 var(--line);        /* a border on a sticky cell scrolls away; this doesn't */
   padding:9px 6px;font-size:11px;font-weight:600;color:var(--dim);
@@ -148,7 +161,10 @@ tbody tr.future{opacity:.42}
 
 td.c-day{text-align:left;padding-left:14px;font-weight:600;font-size:12.5px;cursor:pointer;position:relative;white-space:nowrap}
 td.c-dow{font-size:11px;color:var(--dim);white-space:nowrap}
-td.c-dow.is-today{color:var(--accent);font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
+td.c-dow.is-today{
+  color:var(--good);font-weight:400;font-size:14px;letter-spacing:0;text-transform:none;
+  font-family:"Segoe Script","Bradley Hand","Snell Roundhand",cursive;
+}
 tbody tr.sel td.c-day::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
 
 .cell{width:100%;height:29px;display:block;border:0;background:transparent;position:relative;padding:0}
@@ -451,6 +467,8 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
 
   main{display:flex;gap:6mm;align-items:flex-start}
   .col-sheet{flex:1 1 auto;min-width:0}
+  .col-sheet .card{display:block;max-height:none}
+  .sheet-scroll{overflow:visible}
   aside{width:50mm;flex:none;position:static;display:block}
   aside > *{margin-bottom:4mm}
 
@@ -531,7 +549,7 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
 
     <div class="navstats">
       <div class="ns"><b id="nsFull">0</b><span>full days</span></div>
-      <div class="ns big" id="nsStreakWrap"><b id="nsStreak">0</b><span>day streak</span></div>
+      <div class="ns" id="nsStreakWrap"><b id="nsStreak">0</b><span>day streak</span></div>
     </div>
 
     <div class="monthnav">
@@ -542,7 +560,7 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
     </div>
 
     <div class="actions">
-      <button class="btn" id="cmpBtn" title="Compare months (C)">📊 Compare</button>
+      <button class="btn" id="cmpBtn" title="Compare months (C)">Compare</button>
       <button class="btn" id="editBtn">⚙ Habits</button>
       <button class="btn" id="saveBtn" title="Save habits.json — point it at your Google Drive folder">↓ Save</button>
       <button class="btn" id="loadBtn" title="Load habits.json">↑ Load</button>
@@ -569,7 +587,9 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
           <div class="spacer"></div>
           <span style="font-size:12px;color:var(--dim)" id="sheetHint"></span>
         </div>
-        <table class="sheet" id="sheet"></table>
+        <div class="sheet-scroll">
+          <table class="sheet" id="sheet"></table>
+        </div>
       </section>
     </div>
 
