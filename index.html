@@ -161,10 +161,7 @@ tbody tr.future{opacity:.42}
 
 td.c-day{text-align:left;padding-left:14px;font-weight:600;font-size:12.5px;cursor:pointer;position:relative;white-space:nowrap}
 td.c-dow{font-size:11px;color:var(--dim);white-space:nowrap}
-td.c-dow.is-today{
-  color:var(--good);font-weight:400;font-size:14px;letter-spacing:0;text-transform:none;
-  font-family:"Segoe Script","Bradley Hand","Snell Roundhand",cursive;
-}
+td.c-dow.is-today{color:var(--good)}
 tbody tr.sel td.c-day::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
 
 .cell{width:100%;height:29px;display:block;border:0;background:transparent;position:relative;padding:0}
@@ -1993,10 +1990,6 @@ $("#unlockPass").addEventListener("keydown", e => { if(e.key === "Enter") $("#sy
 
 $("#pushBtn").onclick = () => syncNow();
 
-/* don't let anyone walk away from unpushed work */
-window.addEventListener("beforeunload", e => {
-  if(cfg && token && dirty){ e.preventDefault(); e.returnValue = ""; }
-});
 $("#syncOff").onclick = () => {
   if(confirm("Disconnect this browser from GitHub?\n\nYour data stays in the repo and in this browser — only the saved token is removed.")){
     disconnect(); $("#syncDlg").close();
