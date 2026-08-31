@@ -28,6 +28,14 @@
   --empty:#212632;
   --grid:#2c2c2a;
   --good:hsl(140 76% 55%);          /* the full-battery green */
+  /* Mark scale — a status ramp, not a series. Three greens step DOWN toward the
+     surface as the state weakens, exactly like HEAT; the two reds are a pair,
+     pale for a late-but-logged kaja, loud for an outright fail. */
+  --mk-pass:#3fb950;
+  --mk-home:#238636;
+  --mk-before:#14532a;
+  --mk-kaja:#7f3a3a;
+  --mk-fail:#f85149;
   --shadow:0 8px 28px rgba(0,0,0,.45);
   --radius:14px;
 }
@@ -44,6 +52,12 @@
   --empty:#e6e9f0;
   --grid:#e1e0d9;
   --good:hsl(140 82% 30%);          /* same hue, stepped down to stay legible on white */
+  /* Same ramp, inverted: on white the weak end is the pale one. */
+  --mk-pass:#216e39;
+  --mk-home:#40c463;
+  --mk-before:#9be9a8;
+  --mk-kaja:#ffb1ab;
+  --mk-fail:#cf222e;
   --shadow:0 6px 22px rgba(20,25,40,.10);
 }
 
@@ -95,6 +109,8 @@ header.top{
 .btn:hover{background:var(--panel-2);border-color:var(--dimmer)}
 .btn:active{transform:translateY(1px)}
 .btn.icon{padding:7px 10px;min-width:34px;text-align:center}
+.btn.danger{color:#e34948;border-color:color-mix(in srgb,#e34948 40%,var(--line))}
+.btn.danger:hover{background:color-mix(in srgb,#e34948 12%,transparent);border-color:#e34948}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.primary:hover{filter:brightness(1.08);background:var(--accent)}
 .btn:disabled{opacity:.45;cursor:default;transform:none}
@@ -151,7 +167,6 @@ table.sheet thead th.h-dow{width:52px}
 table.sheet thead th.h-bar{width:64px}
 table.sheet thead th.h-habit{min-width:52px}
 .hname{display:block;line-height:1.2;word-break:break-word;color:var(--txt);font-weight:600;font-size:11.5px}
-.hdot{display:block;width:100%;height:3px;border-radius:2px;margin-top:6px}
 
 table.sheet tbody td{border-bottom:1px solid var(--line-soft);padding:0;height:29px;text-align:center}
 tbody tr.weekend td{background:color-mix(in srgb,var(--panel-2) 60%,transparent)}
@@ -170,12 +185,16 @@ tbody tr.sel td.c-day::before{content:"";position:absolute;left:0;top:0;bottom:0
   transition:background .16s,border-color .16s,transform .12s;
 }
 .cell:hover::after{border-color:var(--dimmer)}
-.cell.on::after{background:var(--hc);border-color:var(--hc);transform:scale(1.04)}
-.cell.on::before{
-  content:"";position:absolute;inset:0;margin:auto;width:7px;height:4px;
-  border-left:2px solid #fff;border-bottom:2px solid #fff;
-  transform:rotate(-45deg) translate(1px,-1px);z-index:1;
-}
+/* One scale for every habit — the fill IS the state. No tick, no letter, and
+   deliberately no per-habit hue: a column is identified by its header, not its
+   colour. Each cell still carries its state in title/aria-label. */
+.cell[data-m]::after{transform:scale(1.04)}
+.cell[data-m="pass"]::after  {background:var(--mk-pass);  border-color:var(--mk-pass)}
+.cell[data-m="home"]::after  {background:var(--mk-home);  border-color:var(--mk-home)}
+.cell[data-m="before"]::after{background:var(--mk-before);border-color:var(--mk-before)}
+.cell[data-m="kaja"]::after  {background:var(--mk-kaja);  border-color:var(--mk-kaja)}
+.cell[data-m="fail"]::after  {background:var(--mk-fail);  border-color:var(--mk-fail)}
+.cell.picking::after{box-shadow:0 0 0 2px var(--accent)}
 
 .daybar{width:48px;height:6px;border-radius:3px;background:var(--empty);overflow:hidden;margin:0 auto}
 .daybar i{display:block;height:100%;border-radius:3px;transition:width .25s}
@@ -204,6 +223,9 @@ aside{display:flex;flex-direction:column;gap:16px;position:sticky;top:calc(var(-
 }
 .battery.live .bat-body{border-color:var(--fill)}
 .battery.full .bat-body{box-shadow:0 0 0 4px color-mix(in srgb,var(--fill) 22%,transparent),0 0 34px color-mix(in srgb,var(--fill) 40%,transparent)}
+/* below zero: the same chrome, in the fail colour, so it cannot read as merely empty */
+.battery.neg .bat-body{box-shadow:0 0 0 3px color-mix(in srgb,var(--mk-fail) 20%,transparent)}
+.battery.neg .bat-read .pct{color:var(--mk-fail)}
 .segs{display:flex;flex-direction:column-reverse;gap:5px;height:100%}
 .seg{
   flex:1;border-radius:6px;background:var(--empty);min-height:6px;cursor:pointer;
@@ -211,6 +233,8 @@ aside{display:flex;flex-direction:column;gap:16px;position:sticky;top:calc(var(-
 }
 .seg:hover{box-shadow:inset 0 0 0 1.5px var(--dimmer)}
 .seg.on{background:var(--fill);box-shadow:0 0 12px -2px color-mix(in srgb,var(--fill) 65%,transparent)}
+/* a half-credit mark leaves a segment part-filled rather than rounding it away */
+.seg.part{background:linear-gradient(to top,var(--fill) calc(var(--segf,1) * 100%),var(--empty) 0)}
 .seg.pop{transform:scaleX(1.06)}
 .bat-read{
   position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
@@ -246,6 +270,7 @@ aside{display:flex;flex-direction:column;gap:16px;position:sticky;top:calc(var(-
 .wkbat.live .wkbat-body{border-color:var(--wfill)}
 .wkbat.live .wkbat-cap{background:var(--wfill)}
 .wkbat.hit .wkbat-body{box-shadow:0 0 0 3px color-mix(in srgb,var(--good) 22%,transparent)}
+.wkbat.neg .wkbat-body{box-shadow:0 0 0 3px color-mix(in srgb,var(--mk-fail) 20%,transparent)}
 
 .wknum{display:flex;align-items:baseline;gap:4px;font-size:12px;color:var(--dim);margin-bottom:13px}
 .wknum b{font-size:25px;font-weight:700;color:var(--txt);letter-spacing:-.8px;line-height:1}
@@ -268,6 +293,8 @@ aside{display:flex;flex-direction:column;gap:16px;position:sticky;top:calc(var(-
 .wkd.sel .bar{box-shadow:inset 0 0 0 2px var(--accent)}
 .wkd.today .lb{color:var(--accent);font-weight:700}
 .wkd.future{opacity:.38}
+/* a dot below zero fills from the bottom in the fail colour, like both batteries */
+.wkd.neg .bar{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--mk-fail) 45%,transparent)}
 
 .wkmsg{font-size:12px;color:var(--dim);text-align:center;line-height:1.5}
 .wkmsg.hit{color:var(--good);font-weight:600}
@@ -361,6 +388,22 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .hedit .mini{background:transparent;border:1px solid var(--line);border-radius:7px;width:28px;height:28px;flex:none;color:var(--dim);font-size:12px;line-height:1;padding:0}
 .hedit .mini:hover{background:var(--panel-2);color:var(--txt)}
 .hedit .mini.del:hover{border-color:#e34948;color:#e34948}
+.hedit .mini.wide{width:auto;padding:0 9px;font-size:11px;white-space:nowrap}
+.hedit .mini.wide.on{border-color:var(--accent);color:var(--txt);background:var(--panel-2)}
+
+/* which of the five a habit offers, and what it calls them */
+.stpanel{margin:0 0 10px 34px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2)}
+.stnote{margin:0 0 9px;font-size:11.5px;color:var(--dim);line-height:1.5}
+.stopt{display:flex;align-items:center;gap:9px;padding:4px 0;cursor:pointer}
+.stopt.off{opacity:.45}
+.stopt input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);flex:none;margin:0;cursor:pointer}
+.stopt i{width:15px;height:15px;border-radius:4px;flex:none;border:1px solid color-mix(in srgb,var(--dimmer) 55%,transparent)}
+.stopt .stlbl{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:12.5px}
+.stopt .stlbl:focus{outline:none;border-color:var(--accent)}
+.stopt .stpts{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums;width:36px;text-align:right}
+.stpresets{display:flex;gap:6px;margin-top:10px}
+.stpresets button{background:transparent;border:1px solid var(--line);border-radius:7px;padding:4px 9px;font-size:11px;color:var(--dim)}
+.stpresets button:hover{background:var(--panel);color:var(--txt)}
 
 kbd{background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 5px;font:600 11px ui-monospace,monospace;color:var(--txt)}
 .klist{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:12.5px;align-items:center}
@@ -373,6 +416,36 @@ kbd{background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2
   opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:99;
 }
 .toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ============================================================
+   MARK PICKER
+   Six states is too many to cycle through and far too many for 155 <select>
+   elements inside a print-bound grid, so one shared popover is anchored to
+   whichever cell was clicked. The sheet stays exactly as dense as it was.
+   ============================================================ */
+.picker{
+  position:fixed;z-index:60;width:236px;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  box-shadow:var(--shadow);padding:6px;
+  display:flex;flex-direction:column;gap:1px;
+}
+.picker[hidden]{display:none}
+.pk{
+  display:flex;align-items:center;gap:9px;width:100%;
+  background:transparent;border:0;border-radius:8px;padding:7px 8px;text-align:left;
+}
+.pk:hover,.pk:focus-visible{background:var(--panel-2);outline:none}
+.pk[aria-current]{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.pk i{width:17px;height:17px;border-radius:5px;flex:none;border:1px solid color-mix(in srgb,var(--dimmer) 55%,transparent)}
+.pk.clear i{background:var(--empty)}
+.pk .pk-l{flex:1;min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk .pk-p{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+
+/* the same scale, spelled out once in the help dialog */
+.mklegend{display:grid;grid-template-columns:auto 1fr auto;gap:7px 12px;align-items:center;margin:0 0 14px}
+.mklegend i{width:15px;height:15px;border-radius:4px;display:block;border:1px solid color-mix(in srgb,var(--dimmer) 55%,transparent)}
+.mklegend b{font-size:12.5px;font-weight:600}
+.mklegend span{font-size:11.5px;color:var(--dim);font-variant-numeric:tabular-nums}
 
 /* ============================================================
    COMPARE VIEW
@@ -448,6 +521,7 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
   :root{
     --bg:#fff;--panel:#fff;--panel-2:#fafafa;--line:#c9ced8;--line-soft:#e4e7ec;
     --txt:#000;--dim:#4a5160;--dimmer:#8d94a2;--empty:#e9ecf1;--grid:#e1e0d9;--shadow:none;
+    --mk-pass:#216e39;--mk-home:#40c463;--mk-before:#9be9a8;--mk-kaja:#ffb1ab;--mk-fail:#cf222e;
   }
   html,body{background:#fff !important;color:#000 !important}
   *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
@@ -478,14 +552,12 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
   table.sheet{font-size:7.2pt}
   table.sheet thead th{padding:3px 2px;font-size:6.4pt;background:#fff}
   .hname{font-size:6.4pt}
-  .hdot{height:2px;margin-top:3px}
   table.sheet tbody td{height:5.6mm}
   td.c-day{font-size:7pt;padding-left:6px}
   td.c-dow{font-size:6.4pt}
   td.c-dow.is-today{font-size:6pt}
   .cell{height:5.6mm}
   .cell::after{inset:1.1mm;border-width:.9pt;border-radius:1.2mm}
-  .cell.on::before{width:5px;height:3px;border-width:1.4px}
   tbody tr.today td{background:transparent}
   tbody tr.sel td{box-shadow:none}
   tbody tr.future{opacity:1}
@@ -508,7 +580,7 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
   .batwrap{padding:5mm 0 2mm}
   .battery{width:26mm}
   .bat-body{height:52mm;border-width:2px;border-radius:8px;padding:1.4mm}
-  .battery.full .bat-body{box-shadow:none}
+  .battery.full .bat-body,.battery.neg .bat-body{box-shadow:none}
   .seg{border-radius:2px;box-shadow:none !important}
   .bat-read{text-shadow:none}
   .bat-read .pct{font-size:15pt;letter-spacing:-.5px}
@@ -626,7 +698,7 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
             <b id="wkDone">0</b>
             <span>/</span>
             <input type="number" id="wkQuota" min="1" step="1" title="Your target for the week — edit it">
-            <span>ticks</span>
+            <span>points</span>
             <span class="of" id="wkOf"></span>
           </div>
           <div class="wkdots" id="wkDots"></div>
@@ -678,6 +750,8 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
   </div>
   <div class="dlg-foot">
     <button class="btn" id="edAdd">+ Add habit</button>
+    <button class="btn danger" id="edClear"
+            title="Remove every mark in this month and forget it was ever tracked">Clear month</button>
     <div class="spacer"></div>
     <button class="btn primary" data-close>Done</button>
   </div>
@@ -789,21 +863,44 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
   </div>
   <div class="dlg-body">
     <div class="klist">
-      <kbd>1</kbd><span>…<kbd>9</kbd> — toggle that habit for the selected day</span>
-      <kbd>Enter</kbd><span>Complete every habit for the day — or clear it if already full</span>
+      <kbd>1</kbd><span>…<kbd>9</kbd> — open the state picker for that habit on the selected day</span>
+      <kbd>1</kbd><span>…<kbd>5</kbd> — <i>with the picker open</i>, choose the option in that position &nbsp;•&nbsp; <kbd>0</kbd> clears it</span>
+      <kbd>Enter</kbd><span>Pass every habit for the day — or clear it if already full</span>
       <kbd>↑</kbd><span><kbd>↓</kbd> — move the selected day</span>
       <kbd>PgUp</kbd><span><kbd>PgDn</kbd> — previous / next month</span>
       <kbd>T</kbd><span>Jump to today &nbsp;•&nbsp; <kbd>C</kbd> — compare months</span>
       <kbd>Ctrl</kbd><span>+<kbd>S</kbd> — save habits.json &nbsp;•&nbsp; <kbd>Ctrl</kbd>+<kbd>P</kbd> — PDF</span>
     </div>
     <p class="note" style="margin-top:16px">
-      <b>Filling the battery one step at a time</b> — click a cell in the month sheet, press
-      <kbd>1</kbd>–<kbd>9</kbd>, or click a battery segment directly (clicking the topmost
-      lit segment un-fills it). The big button is the all-or-nothing switch.
+      <b>The scoring tiers.</b> Every cell holds one of them and the colour is the whole
+      readout — there is no tick and no letter, and habits are not colour-coded against
+      each other. Greens are credit, reds are not. The names below are only the
+      <i>defaults</i>: in <b>⚙ Habits</b> each habit can rename every tier and drop the ones
+      it does not need, down to two. The points never move, so however you name them,
+      everything still adds up together.
+    </p>
+    <div class="mklegend">
+      <i style="background:var(--mk-pass)"></i><b>In Jamah</b><span>+1</span>
+      <i style="background:var(--mk-home)"></i><b>At Home</b><span>+0.5</span>
+      <i style="background:var(--mk-before)"></i><b>Inside Wakt</b><span>+0.25</span>
+      <i style="background:var(--mk-kaja)"></i><b>Kaja</b><span>+0.1</span>
+      <i style="background:var(--mk-fail)"></i><b>Failed</b><span>-0.5</span>
+      <i style="background:var(--empty)"></i><b>Not marked</b><span>0</span>
+    </div>
+    <p class="note">
+      <b>Setting one.</b> Click a cell and pick from the menu, or press <kbd>1</kbd>–<kbd>9</kbd>
+      for the habit then <kbd>1</kbd>–<kbd>5</kbd> for the state. A battery segment sets the
+      day to that many passes (clicking the topmost lit one un-fills it), and the big button
+      passes or clears the whole day.
+    </p>
+    <p class="note">
+      <b>Everything counts in points.</b> The battery, the percentages, the week card and the
+      comparison all add these values up, out of one point per habit per day. A full-battery
+      day still means every habit at <b>Pass</b>.
     </p>
     <p class="note">
       <b>The weekly target.</b> The battery is always today — that doesn't change. The week
-      card underneath counts every tick across the whole week against one target, so a bad
+      card underneath counts every point across the whole week against one target, so a bad
       Tuesday doesn't write off the week: a strong Saturday can still cover it. Click the
       target number to change it, or the date range to switch between Monday and Sunday
       starts. Weeks spanning two months are handled; each day counts against its own month's
@@ -831,6 +928,10 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
     <button class="btn primary" data-close>Close</button>
   </div>
 </dialog>
+
+<div class="picker no-print" id="picker" hidden aria-label="Choose a state">
+  <div id="pkList"></div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -864,6 +965,37 @@ const HEAT = {
           ["#256abf","#ffffff"],["#3987e5","#0b0b0b"],["#6da7ec","#0b0b0b"]]
 };
 
+/* ------------------------------------------------------------
+   MARKS - the five scoring tiers, in menu order.
+
+   THE POINTS ARE THE IDENTITY. `id` is a frozen storage key and `label` is only
+   a DEFAULT name: any habit may rename a tier, or leave it out of its list
+   entirely, without the stored value or the score changing. So "Pass" on one
+   habit and "At the mosque" on another are the same 1-point tier and roll up
+   together. Renaming here changes what an un-customised habit displays;
+   renumbering re-scores every month ever recorded.
+
+   `pass` is worth exactly 1 and an unmarked cell 0, which is what makes an
+   older file readable: a v3 tick migrates to "pass" and the month scores the
+   number it always scored. Never renumber `pass` away from 1.
+   ------------------------------------------------------------ */
+const MARKS = [
+  { id:"pass",   label:"In Jamah",    pts:1    },
+  { id:"home",   label:"At Home",     pts:0.5  },
+  { id:"before", label:"Inside Wakt", pts:0.25 },
+  { id:"kaja",   label:"Kaja",        pts:0.1  },
+  { id:"fail",   label:"Failed",      pts:-0.5 }
+];
+const MARK = {};
+for(const m of MARKS) MARK[m.id] = m;
+
+/** Points for a mark id; anything unknown or unset is worth nothing. */
+const pts = m => (MARK[m] ? MARK[m].pts : 0);
+/** Sums of .25 and .1 steps accumulate float dust - round it off before it shows. */
+const r2  = n => Math.round(n * 100) / 100;
+/** 3 -> "3", 4.5 -> "4.5", -0.5 -> "-0.5" */
+const fmtP = n => String(r2(n));
+
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const ABBR   = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DOW    = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -881,8 +1013,44 @@ const heat   = pct => HEAT[theme()][Math.max(0, Math.min(5, Math.floor(pct / 100
 
 function uid(){ return "h" + Math.random().toString(36).slice(2,9); }
 
+/* ---- per-habit state lists ----------------------------------------------
+   A habit may carry `states`: a map of tier id -> label, where "" means "keep
+   the default name" and a tier that is ABSENT is simply not offered on that
+   habit. Order is never stored; MARKS defines it. No `states` at all means all
+   five under their default names, which is what every habit starts as. */
+
+/** Clean a `states` map, or return null when it just means "the default". */
+function normStates(st){
+  if(!st || typeof st !== "object" || Array.isArray(st)) return null;
+  const out = {};
+  for(const m of MARKS)
+    if(m.id in st) out[m.id] = String(st[m.id] == null ? "" : st[m.id]).slice(0, 40);
+  const ids = Object.keys(out);
+  if(!ids.length) return null;                       // never leave a habit with nothing to pick
+  if(ids.length === MARKS.length && ids.every(id => !out[id].trim())) return null;
+  return out;
+}
+
+/** The tiers this habit offers, in canonical order: [{ id, label, pts }]. */
+function habitStates(h){
+  const st = h && h.states;
+  if(!st) return MARKS;
+  const out = MARKS.filter(m => m.id in st)
+                   .map(m => ({ ...m, label:String(st[m.id] || "").trim() || m.label }));
+  return out.length ? out : MARKS;
+}
+
+/** What this habit calls one tier. Falls back to the default, so a mark logged
+    before the habit narrowed its list still reads as something. */
+function stateLabel(h, id){
+  const m = MARK[id];
+  if(!m) return "";
+  const st = h && h.states;
+  return (st && String(st[id] || "").trim()) || m.label;
+}
+
 function seed(){
-  return { version:3, weekStart:1, quota:null, master:[
+  return { version:4, weekStart:1, quota:null, master:[
     { id:uid(), name:"Exercise",    slot:0 },
     { id:uid(), name:"Read",        slot:1 },
     { id:uid(), name:"Deep work",   slot:2 },
@@ -892,9 +1060,36 @@ function seed(){
 }
 
 /**
+ * Accept EITHER shape of a month's `entries` and return the v4 one.
+ *   v3 and older:  { 14: ["idA","idB"] }        a list of ticked habit ids
+ *   v4:            { 14: { idA:"pass", ... } }  one mark per habit
+ * A v3 tick becomes "pass", so an older habits.json — the file in the data repo,
+ * a Drive backup, an export from another browser — reads back with its numbers
+ * unchanged. Unknown mark ids are dropped rather than quietly scored as zero.
+ */
+function normEntries(entries){
+  const out = {};
+  for(const day in (entries || {})){
+    const v = entries[day], o = {};
+    if(Array.isArray(v)){ for(const id of v) if(id) o[id] = "pass"; }
+    else if(v && typeof v === "object"){ for(const id in v) if(MARK[v[id]]) o[id] = v[id]; }
+    if(Object.keys(o).length) out[day] = o;
+  }
+  return out;
+}
+
+/**
  * v1 → v2: a hex per habit became a palette slot.
  * v2 → v3: added the weekly quota + week-start day.
- * Idempotent — it runs on every load and on every import.
+ * v3 → v4: a day went from an array of ticked ids to a map of id → mark, every tick
+ *          becoming `pass`.
+ * Idempotent — it runs on every load, every import and every remote pull.
+ *
+ * An old file's BLANKS are not rewritten here. They do not need to be: a blank inside the
+ * tracking window scores −0.5 wherever it is read (see `missRange`), so a v3 month rolls up
+ * the same whether or not anything was written into it. An earlier build did stamp them out
+ * as real `fail` marks; that wrote a few hundred rows per month, could not be undone, and
+ * gave old and new data two different rules. One computed rule replaces it.
  */
 function migrate(s){
   const fix = list => (list || []).forEach((h,i) => {
@@ -903,12 +1098,17 @@ function migrate(s){
       h.slot = (old >= 0 ? old : i) % 8;
     }
     delete h.color;
+    const st = normStates(h.states);
+    if(st) h.states = st; else delete h.states;
   });
   fix(s.master);
-  for(const k in s.months) fix(s.months[k].habits);
+  for(const k in s.months){
+    fix(s.months[k].habits);
+    s.months[k].entries = normEntries(s.months[k].entries);
+  }
   if(s.weekStart !== 0 && s.weekStart !== 1) s.weekStart = 1;      // default Monday
   if(typeof s.quota !== "number" || s.quota <= 0) s.quota = null;  // null = auto (80%)
-  s.version = 3;
+  s.version = 4;
   return s;
 }
 
@@ -954,24 +1154,93 @@ function materialize(key){
   return state.months[key];
 }
 
-function doneSet(key, day){ return md(key).entries[day] || []; }
-function isDone(key, day, hid){ return doneSet(key, day).indexOf(hid) !== -1; }
+/** One day's marks: { habitId: markId }. An untouched day reads as {}. */
+function dayMarks(key, day){ return md(key).entries[day] || {}; }
+/** The mark on one cell, or "" when it is unset. */
+function markOf(key, day, hid){
+  const m = dayMarks(key, day)[hid];
+  return MARK[m] ? m : "";
+}
 
-function setDone(key, day, hid, on){
+/** Write one cell. `mark` is a MARKS id; "" / null / undefined clears it. */
+function setMark(key, day, hid, mark){
   const m = materialize(key);
-  const arr = m.entries[day] || (m.entries[day] = []);
-  const i = arr.indexOf(hid);
-  if(on && i < 0) arr.push(hid);
-  if(!on && i >= 0) arr.splice(i, 1);
-  if(arr.length === 0) delete m.entries[day];
+  const e = m.entries[day] || (m.entries[day] = {});
+  if(MARK[mark]) e[hid] = mark; else delete e[hid];
+  if(Object.keys(e).length === 0) delete m.entries[day];
   save();
 }
 
+/* "Ticked" has only ever meant the top state, so the old two-value API still
+   holds — it is what the battery, the fill button and the tests speak. */
+function setDone(key, day, hid, on){ setMark(key, day, hid, on ? "pass" : ""); }
+function isDone(key, day, hid){ return markOf(key, day, hid) === "pass"; }
+function doneSet(key, day){ return Object.keys(dayMarks(key, day)); }
+
+/* ---- the tracking window --------------------------------------------------
+   An unmarked cell is not always worth nothing. Once a day is OVER, a blank on it
+   is a miss and costs `fail` — there is no difference between deciding you failed
+   and never coming back to it. Two bounds keep that from inventing history:
+
+     from  that month's first logged day. Days before you started, and whole months
+           you never touched, are not failures — they are simply not in the record.
+     to    the end of YESTERDAY. Today is still open — the day is not done — and
+           charging for it would put the battery underwater every morning. Same
+           principle as `streak()` skipping an unfinished today.
+
+   Nothing is written for any of this. The charge is computed wherever a score is
+   read, so marking the cell later simply replaces it, and a synced file stays as
+   small as the marks the user actually made. */
+
+/**
+ * `[firstDay, lastDay]` of ONE month over which a blank counts as a miss, or null when
+ * none does. The window is deliberately per month, not global:
+ *
+ *   from  that month's first logged day. You started tracking when you started; days
+ *         before that are not failures, and a month you never touched has no window at
+ *         all, so browsing back through your history does not paint it red.
+ *   to    the end of yesterday, or the last day of the month once it is over. Today is
+ *         still open, so it is never charged.
+ */
+function missWindow(key){
+  const rec = state.months[key];
+  if(!rec || !rec.habits.length) return null;
+  let from = 0;
+  for(const d in rec.entries){
+    const n = +d;
+    if(n > 0 && (!from || n < from)) from = n;
+  }
+  if(!from) return null;                                    // never logged - never tracked
+  const { y, m } = parseKey(key), t = new Date();
+  let to;
+  if(y === t.getFullYear() && m === t.getMonth())                       to = t.getDate() - 1;
+  else if(y > t.getFullYear() || (y === t.getFullYear() && m > t.getMonth())) to = 0;
+  else                                                                  to = daysIn(y, m);
+  return to >= from ? [from, to] : null;
+}
+
+/** What one blank cell is worth on this day: `fail` inside the window, else 0. */
+function missPts(win, day){
+  return (win && day >= win[0] && day <= win[1]) ? MARK.fail.pts : 0;
+}
+
+/** A day's score in POINTS — the figure every roll-up is built from. */
 function dayDone(key, day){
-  const hs = md(key).habits, set = doneSet(key, day);
+  const e = dayMarks(key, day), miss = missPts(missWindow(key), day);
   let n = 0;
-  for(const h of hs) if(set.indexOf(h.id) !== -1) n++;
-  return n;
+  for(const h of md(key).habits){
+    const v = e[h.id];
+    n += MARK[v] ? MARK[v].pts : miss;
+  }
+  return r2(n);
+}
+
+/** Every habit at "pass" — the unchanged meaning of a full-battery day. */
+function dayFull(key, day){
+  const hs = md(key).habits;
+  if(!hs.length) return false;
+  const e = dayMarks(key, day);
+  return hs.every(h => e[h.id] === "pass");
 }
 
 /** Days of `key` that count toward a denominator: the whole month, or up to today. */
@@ -987,23 +1256,61 @@ function monthStats(key){
   const rec = md(key), hs = rec.habits, {y,m} = parseKey(key);
   const nd = daysIn(y,m), elapsed = elapsedIn(key);
   const per = new Map(hs.map(h => [h.id, 0]));
+  const win = missWindow(key);
   let total = 0, full = 0;
   for(let d = 1; d <= nd; d++){
-    const set = rec.entries[d] || [];
-    let c = 0;
-    for(const h of hs) if(set.indexOf(h.id) !== -1){ c++; per.set(h.id, per.get(h.id) + 1); }
-    total += c;
-    if(hs.length && c === hs.length) full++;
+    const e = rec.entries[d] || {};
+    const miss = missPts(win, d);                 // what a blank costs on THIS day
+    let c = 0, all = hs.length > 0;
+    for(const h of hs){
+      const v = e[h.id];
+      const p = MARK[v] ? MARK[v].pts : miss;
+      c += p;
+      per.set(h.id, r2(per.get(h.id) + p));
+      if(v !== "pass") all = false;
+    }
+    total = r2(total + c);
+    if(all) full++;
   }
+  /* one point per habit per day is the ceiling, so `possible` is unchanged */
   const possible = hs.length * elapsed;
+  /* a month full of fails scores below zero; pct is only ever drawn as a bar
+     height or a heatmap step, so floor it at 0 rather than draw backwards */
   return { habits:hs, days:nd, elapsed, total, full, possible,
-           pct: possible ? Math.round(total / possible * 100) : 0, per };
+           pct: possible ? Math.max(0, Math.round(total / possible * 100)) : 0, per };
+}
+
+/**
+ * How far below zero a score sits, as a fraction of the worst it could have been.
+ * A day of `n` habits bottoms out at `n × −0.5`; a week at `possible × −0.5`. Returns 0
+ * for anything not negative, so callers can use it as the "is this red" test as well as
+ * the fill amount. Both batteries fill DOWNWARD from empty on this figure, which is what
+ * stops a bad day reading as an untouched one — grey means nothing logged, red means
+ * you are under water.
+ */
+function deficit(score, cells){
+  const worst = cells * -MARK.fail.pts;
+  return worst > 0 ? Math.max(0, Math.min(1, -score / worst)) : 0;
 }
 
 /* ratio -> colour (red → amber → green); the battery is a status gauge, not a series */
 function fillColor(r){
   const h = 4 + 136 * Math.max(0, Math.min(1, r));
   return `hsl(${h.toFixed(0)} 76% 55%)`;
+}
+
+/**
+ * How to draw one score as a bar — the single place that decision is made, so the four
+ * gauges (day battery, day bar, week dots, week bar) cannot drift apart.
+ * Above zero it is the ordinary red→amber→green ramp filled by `score / cells`; below zero
+ * it fills back up in the fail colour by `deficit`. Callers that hide an empty bar test
+ * `f` themselves — `col` is always a real colour.
+ */
+function gauge(score, cells){
+  const neg = score < 0;
+  const f = neg ? deficit(score, cells)
+                : (cells ? Math.max(0, Math.min(1, score / cells)) : 0);
+  return { neg, f, col: neg ? "var(--mk-fail)" : fillColor(f) };
 }
 
 function esc(s){
@@ -1042,14 +1349,14 @@ function renderSheet(key, m, nd){
   let h = `<thead><tr><th class="h-day">Day</th><th class="h-dow"></th>`;
   for(const hb of hs){
     h += `<th class="h-habit" title="${esc(hb.name)}">
-            <span class="hname">${esc(hb.name)}</span>
-            <span class="hdot" style="background:${hue(hb.slot)}"></span></th>`;
+            <span class="hname">${esc(hb.name)}</span></th>`;
   }
   h += `<th class="h-bar">Day</th></tr></thead><tbody>`;
 
+  const win = missWindow(key);
   for(let d = 1; d <= nd; d++){
     const dow    = new Date(view.y, view.m, d).getDay();
-    const set    = m.entries[d] || [];
+    const set    = m.entries[d] || {};
     const today  = isToday(view.y, view.m, d);
     const future = curMonth && d > t.getDate();
     const cls = [(dow===0||dow===6)?"weekend":"", today?"today":"",
@@ -1059,27 +1366,39 @@ function renderSheet(key, m, nd){
     h += `<td class="c-day">${d}</td>`;
     h += today ? `<td class="c-dow is-today">Today</td>` : `<td class="c-dow">${DOW[dow]}</td>`;
 
-    let cnt = 0;
+    /* a blank inside the tracking window reads AS a miss - same fill, same cost -
+       without one being written, so marking it later just replaces it */
+    const missPt = missPts(win, d);
+    let score = 0;
     for(const hb of hs){
-      const on = set.indexOf(hb.id) !== -1;
-      if(on) cnt++;
-      h += `<td><button class="cell${on?" on":""}" style="--hc:${hue(hb.slot)}"
-              data-day="${d}" data-h="${hb.id}"
-              title="${esc(hb.name)} — ${MONTHS[view.m]} ${d}" aria-pressed="${on}"></button></td>`;
+      const mk = MARK[set[hb.id]] ? set[hb.id] : "";
+      const miss = !mk && missPt !== 0;
+      score += mk ? pts(mk) : missPt;
+      /* the fill is the only visual state, so the words live in the label */
+      const lb = esc(mk ? stateLabel(hb, mk) : (miss ? "not marked, counts as a miss" : "not marked"));
+      const open = pick && pick.day === d && pick.hid === hb.id;
+      h += `<td><button class="cell${open?" picking":""}"${mk?` data-m="${mk}"`:(miss?` data-m="fail" data-miss`:"")}
+              data-day="${d}" data-h="${hb.id}" aria-haspopup="true" aria-expanded="${!!open}"
+              title="${esc(hb.name)} — ${MONTHS[view.m]} ${d}: ${lb}"
+              aria-label="${esc(hb.name)}, ${MONTHS[view.m]} ${d}: ${lb}"></button></td>`;
     }
-    const r = hs.length ? cnt / hs.length : 0;
-    h += `<td><div class="daybar"><i style="width:${(r*100).toFixed(1)}%;background:${r?fillColor(r):"transparent"}"></i></div></td></tr>`;
+    const g = gauge(score, hs.length);
+    h += `<td><div class="daybar"><i style="width:${(g.f*100).toFixed(1)}%;background:${g.f?g.col:"transparent"}"></i></div></td></tr>`;
   }
 
-  h += `</tbody><tfoot><tr><td class="c-day" colspan="2">Total</td>`;
+  /* the footer counts POINTS, not cells — a column of half-credit reads as half */
+  h += `</tbody><tfoot><tr><td class="c-day" colspan="2">Points</td>`;
   let tot = 0;
   for(const hb of hs){
     let c = 0;
-    for(let d = 1; d <= nd; d++) if(isDone(key, d, hb.id)) c++;
-    tot += c;
-    h += `<td>${c}</td>`;
+    for(let d = 1; d <= nd; d++){
+      const mk = markOf(key, d, hb.id);
+      c += mk ? pts(mk) : missPts(win, d);
+    }
+    tot = r2(tot + c);
+    h += `<td>${fmtP(c)}</td>`;
   }
-  h += `<td>${tot}</td></tr></tfoot>`;
+  h += `<td>${fmtP(tot)}</td></tr></tfoot>`;
 
   $("#sheet").innerHTML = h;
 }
@@ -1087,20 +1406,22 @@ function renderSheet(key, m, nd){
 /* ---------- right: battery, all/none button, chips ---------- */
 function renderPanel(key, m){
   const hs = m.habits, n = hs.length;
-  const set = doneSet(key, selDay);
-  const c = hs.filter(h => set.indexOf(h.id) !== -1).length;
-  const r = n ? c / n : 0;
-  const col = fillColor(r);
-
+  const c = dayDone(key, selDay);                       // points, not a count
+  const full = dayFull(key, selDay);
   const dt = new Date(view.y, view.m, selDay);
   $("#selBig").textContent = `${DOW[dt.getDay()]}, ${MONTHS[view.m]} ${selDay}`;
   $("#selSub").textContent = isToday(view.y, view.m, selDay) ? "Today" : String(view.y);
 
+  /* under zero the gauge stops being a gauge and becomes a warning: it fills back up
+     in the fail colour, so "bad day" never looks like "nothing logged" */
+  const g = gauge(c, n), neg = g.neg;
+
   const bat = $("#battery");
-  bat.style.setProperty("--fill", col);
-  bat.classList.toggle("full",  n > 0 && c === n);
+  bat.style.setProperty("--fill", g.col);
+  bat.classList.toggle("full",  full);
   bat.classList.toggle("empty", c === 0);
-  bat.classList.toggle("live",  c > 0);
+  bat.classList.toggle("live",  c !== 0);
+  bat.classList.toggle("neg",   neg);
 
   const segs = $("#segs"), need = Math.max(n, 1);
   if(segs.children.length !== need){
@@ -1111,21 +1432,30 @@ function renderPanel(key, m){
       segs.appendChild(s);
     }
   }
-  [...segs.children].forEach((s,i) => s.classList.toggle("on", n > 0 && i < c));
+  /* one segment per habit, filled bottom-up by the day's points; the segment the
+     score lands inside is part-filled rather than rounded away */
+  [...segs.children].forEach((sg,i) => {
+    const lit = g.f * n;                            // how many segments to paint
+    const f = n > 0 ? Math.max(0, Math.min(1, lit - i)) : 0;
+    sg.classList.toggle("on",   f > 0);
+    sg.classList.toggle("part", f > 0 && f < 1);
+    sg.style.setProperty("--segf", f.toFixed(3));
+  });
 
-  $("#batPct").textContent  = n ? Math.round(r*100) + "%" : "—";
-  $("#batFrac").textContent = `${c} / ${n}`;
+  /* show the real signed figure - clamping it to 0% would hide the whole point */
+  $("#batPct").textContent  = n ? Math.round(c / n * 100) + "%" : "—";
+  $("#batFrac").textContent = `${fmtP(c)} / ${n} pts`;
 
   /* one switch: fill the whole day, or clear it */
   const fb = $("#fillBtn");
   if(n === 0){
     fb.textContent = "Add some habits first";
     fb.className = "fillbtn no-print clear"; fb.disabled = true;
-  }else if(c === n){
+  }else if(full){
     fb.textContent = "↺ Clear the day";
     fb.className = "fillbtn no-print clear"; fb.disabled = false;
   }else{
-    fb.textContent = `✓ Complete all ${n} habits`;
+    fb.textContent = `✓ Pass all ${n} habits`;
     fb.className = "fillbtn no-print"; fb.disabled = false;
   }
 
@@ -1145,7 +1475,7 @@ function weekDates(y, m, d){
   return [...Array(7)].map((_,i) => new Date(s.getFullYear(), s.getMonth(), s.getDate() + i));
 }
 
-/** Target ticks for the week. Unset = 80% of what's possible; always clamped to possible. */
+/** Target POINTS for the week. Unset = 80% of what's possible; always clamped to possible. */
 function weekQuota(possible){
   if(possible <= 0) return 0;
   const q = (typeof state.quota === "number" && state.quota > 0)
@@ -1163,12 +1493,13 @@ function weekStats(y, m, d){
     const n = md(k).habits.length;
     const c = dayDone(k, dt.getDate());
     const future = dt.getTime() > t.getTime();
-    done += c; possible += n;
+    done = r2(done + c); possible += n;
     if(future || dt.getTime() === t.getTime()) left++;   // days you can still act on
     return { dt, n, c, future, today: dt.getTime() === t.getTime() };
   });
 
   const quota = weekQuota(possible);
+  done = r2(done);
   return { dates, days, done, possible, quota, left,
            past: dates[6].getTime() < t.getTime(),
            ratio: quota ? done / quota : 0 };
@@ -1197,15 +1528,24 @@ function renderWeek(){
   if(!w.possible){ card.style.display = "none"; return; }
   card.style.display = "";
 
-  const col = fillColor(Math.min(1, w.ratio));
+  /* the week bar is the one gauge that does NOT fill against its own cells: above zero it
+     fills against the QUOTA, which is the whole point of the card. Only the negative half
+     shares `deficit`, whose basis is the worst the week could have been. */
+  const neg = w.done < 0;
   const bat = $("#wkBat");
-  bat.style.setProperty("--wfill", col);
-  bat.classList.toggle("live", w.done > 0);
+  bat.style.setProperty("--wfill", neg ? "var(--mk-fail)" : fillColor(Math.max(0, Math.min(1, w.ratio))));
+  bat.classList.toggle("live", w.done !== 0);
   bat.classList.toggle("hit",  w.done >= w.quota);
-  $("#wkFill").style.width = Math.min(100, w.ratio * 100).toFixed(1) + "%";
+  bat.classList.toggle("neg",  neg);
+  /* a negative week fills in the fail colour by how far under it is, not by the ratio -
+     and never with a negative width, which is invalid CSS and would silently freeze the
+     bar at whatever it last showed */
+  $("#wkFill").style.width =
+    (neg ? deficit(w.done, w.possible) * 100
+         : Math.max(0, Math.min(100, w.ratio * 100))).toFixed(1) + "%";
 
   $("#wkRange").textContent = `${shortDate(w.dates[0])} – ${shortDate(w.dates[6])}`;
-  $("#wkDone").textContent  = w.done;
+  $("#wkDone").textContent  = fmtP(w.done);
   $("#wkOf").textContent    = `${w.possible} possible`;
 
   const qi = $("#wkQuota");
@@ -1214,12 +1554,12 @@ function renderWeek(){
 
   $("#wkDots").innerHTML = w.days.map(d => {
     const k = mkey(d.dt.getFullYear(), d.dt.getMonth());
-    const r = d.n ? d.c / d.n : 0;
+    const g = gauge(d.c, d.n);
     const sel = d.dt.getFullYear() === view.y && d.dt.getMonth() === view.m && d.dt.getDate() === selDay;
-    return `<button class="wkd${d.today?" today":""}${d.future?" future":""}${sel?" sel":""}"
+    return `<button class="wkd${d.today?" today":""}${d.future?" future":""}${sel?" sel":""}${g.neg?" neg":""}"
               data-y="${d.dt.getFullYear()}" data-m="${d.dt.getMonth()}" data-d="${d.dt.getDate()}"
-              title="${DOW[d.dt.getDay()]} ${shortDate(d.dt)} — ${d.c}/${d.n}">
-              <span class="bar"><i style="height:${(r*100).toFixed(1)}%;--dc:${r?fillColor(r):"transparent"}"></i></span>
+              title="${DOW[d.dt.getDay()]} ${shortDate(d.dt)} — ${fmtP(d.c)}/${d.n} pts">
+              <span class="bar"><i style="height:${(g.f*100).toFixed(1)}%;--dc:${g.f?g.col:"transparent"}"></i></span>
               <span class="lb">${DOW[d.dt.getDay()][0]}</span></button>`;
   }).join("");
 
@@ -1230,13 +1570,13 @@ function renderWeek(){
   const short = w.quota - w.done;
   if(w.done >= w.quota){
     msg.className = "wkmsg hit";
-    msg.innerHTML = `✓ Target hit — ${w.done - w.quota > 0 ? `${w.done - w.quota} to spare` : "right on the line"}${run}`;
+    msg.innerHTML = `✓ Target hit — ${w.done - w.quota > 0 ? `${fmtP(w.done - w.quota)} to spare` : "right on the line"}${run}`;
   }else if(w.past){
     msg.className = "wkmsg";
-    msg.innerHTML = `Missed by ${short} tick${short===1?"":"s"}`;
+    msg.innerHTML = `Missed by ${fmtP(short)} point${short===1?"":"s"}`;
   }else{
     msg.className = "wkmsg";
-    msg.innerHTML = `<b style="color:var(--txt)">${short} more</b> over ${w.left} day${w.left===1?"":"s"}${run}`;
+    msg.innerHTML = `<b style="color:var(--txt)">${fmtP(short)} more</b> over ${w.left} day${w.left===1?"":"s"}${run}`;
   }
 }
 
@@ -1244,7 +1584,7 @@ function renderWeek(){
 function renderStats(st, sk){
   $("#stats").innerHTML = `
     <div class="stat"><div class="v">${st.possible ? st.pct + "%" : "—"}</div><div class="k">Adherence</div></div>
-    <div class="stat"><div class="v">${st.total}<small> / ${st.possible}</small></div><div class="k">Checks logged</div></div>
+    <div class="stat"><div class="v">${fmtP(st.total)}<small> / ${st.possible}</small></div><div class="k">Points logged</div></div>
     <div class="stat"><div class="v">${st.full}</div><div class="k">Full-battery days</div></div>
     <div class="stat${sk?" good":""}"><div class="v">${sk}</div><div class="k">Current streak</div></div>`;
 
@@ -1281,11 +1621,8 @@ function longestStreak(){
     const rec = state.months[k];
     if(!rec.habits.length) continue;
     const { y, m } = parseKey(k), nd = daysIn(y, m);
-    for(let d = 1; d <= nd; d++){
-      const set = rec.entries[d];
-      if(set && rec.habits.every(h => set.indexOf(h.id) !== -1))
-        days.push(Date.UTC(y, m, d) / 86400000);
-    }
+    for(let d = 1; d <= nd; d++)
+      if(dayFull(k, d)) days.push(Date.UTC(y, m, d) / 86400000);
   }
   days.sort((a,b) => a - b);
   let best = 0, run = 0, prev = null;
@@ -1301,10 +1638,10 @@ function longestStreak(){
 function renderByHabit(key, st){
   $("#hstats").innerHTML = st.habits.length ? st.habits.map(h => {
     const c = st.per.get(h.id) || 0;
-    const p = st.elapsed ? Math.round(c / st.elapsed * 100) : 0;
+    const p = st.elapsed ? Math.max(0, Math.round(c / st.elapsed * 100)) : 0;
     return `<div class="hrow" style="--hc:${hue(h.slot)}">
               <div class="n"><i></i>${esc(h.name)}</div>
-              <div class="v">${c}/${st.elapsed} · ${p}%</div>
+              <div class="v">${fmtP(c)}/${st.elapsed} · ${p}%</div>
               <div class="track"><i style="width:${p}%"></i></div>
             </div>`;
   }).join("") : `<div class="empty-note" style="padding:14px">—</div>`;
@@ -1318,10 +1655,8 @@ function streak(){
                 : new Date(view.y, view.m, daysIn(view.y, view.m));
 
   const perfect = dt => {
-    const rec = state.months[mkey(dt.getFullYear(), dt.getMonth())];
-    if(!rec || !rec.habits.length) return false;
-    const set = rec.entries[dt.getDate()] || [];
-    return rec.habits.every(h => set.indexOf(h.id) !== -1);
+    const k = mkey(dt.getFullYear(), dt.getMonth());
+    return !!state.months[k] && dayFull(k, dt.getDate());
   };
 
   if(!perfect(d)) d.setDate(d.getDate() - 1);   // an unfinished today shouldn't break a live streak
@@ -1333,7 +1668,7 @@ function streak(){
 function renderPrintHead(key, st, sk){
   $("#pTitle").textContent = `${MONTHS[view.m]} ${view.y}`;
   const bits = [`${st.habits.length} habit${st.habits.length===1?"":"s"}`];
-  if(st.possible) bits.push(`${st.pct}% adherence`, `${st.total}/${st.possible} checks`);
+  if(st.possible) bits.push(`${st.pct}% adherence`, `${fmtP(st.total)}/${st.possible} points`);
   bits.push(`${st.full} full-battery day${st.full===1?"":"s"}`);
   if(sk) bits.push(`${sk}-day streak`);
   $("#pSub").textContent = "Habit report · " + bits.join(" · ");
@@ -1371,8 +1706,9 @@ function buildCompare(){
   let chart = `
     <div class="cmp-sec">
       <p class="cmp-title">Adherence by month</p>
-      <p class="cmp-sub">Share of possible ticks actually logged. The current month counts only
-         the days elapsed so far, so it is comparable with completed months.</p>
+      <p class="cmp-sub">Points scored as a share of the possible — one point per habit per day.
+         The current month counts only the days elapsed so far, so it is comparable with
+         completed months.</p>
       <div class="cmp-chart" style="--series1:${s1}">
         <div class="cmp-yaxis"><span>100%</span><span>50%</span><span>0%</span></div>
         <div class="cmp-main">
@@ -1388,7 +1724,7 @@ function buildCompare(){
     chart += `<button class="cmp-col${isCur?" cur":""}" type="button">
         ${isPeak ? `<span class="cmp-peak" style="bottom:calc(${r.st.pct}% + 6px)">${r.st.pct}%</span>` : ""}
         <span class="cmp-tip">${ABBR[r.m]} ${r.y} — ${r.st.pct}%
-          <small>${r.st.total}/${r.st.possible} ticks · ${r.st.full} full day${r.st.full===1?"":"s"}</small></span>
+          <small>${fmtP(r.st.total)}/${r.st.possible} pts · ${r.st.full} full day${r.st.full===1?"":"s"}</small></span>
         <span class="cmp-bar" style="height:${r.st.pct}%"></span>
       </button>`;
   }
@@ -1408,7 +1744,7 @@ function buildCompare(){
   let table = `
     <div class="cmp-sec">
       <p class="cmp-title">Every habit, every month</p>
-      <p class="cmp-sub">Percentage of days that habit was ticked. Darker means higher.
+      <p class="cmp-sub">Points scored on that habit as a share of the days elapsed. Darker means higher.
          <b>—</b> means the habit was not being tracked that month.</p>
       <div class="cmp-scroll"><table class="cmp"><thead><tr>
         <th class="rh">Month</th><th>All</th><th>Full days</th>`;
@@ -1425,9 +1761,9 @@ function buildCompare(){
     for(const [id] of cols){
       if(!r.st.habits.some(h => h.id === id)){ table += `<td class="na">—</td>`; continue; }
       const c = r.st.per.get(id) || 0;
-      const p = r.st.elapsed ? Math.round(c / r.st.elapsed * 100) : 0;
+      const p = r.st.elapsed ? Math.max(0, Math.round(c / r.st.elapsed * 100)) : 0;
       const [b2, i2] = heat(p);
-      table += `<td style="background:${b2};color:${i2}" title="${c} of ${r.st.elapsed} days">${p}%</td>`;
+      table += `<td style="background:${b2};color:${i2}" title="${fmtP(c)} points over ${r.st.elapsed} days">${p}%</td>`;
     }
     table += `</tr>`;
   }
@@ -1439,8 +1775,9 @@ function buildCompare(){
   /* ---- one-line read of the trend ---- */
   const last = rows[rows.length-1], prev = rows[rows.length-2];
   const d = last.st.pct - prev.st.pct;
+  /* percentage points, not mark points — spell it out now that both exist */
   const verdict = d === 0 ? `level with ${ABBR[prev.m]}`
-                : `${Math.abs(d)} point${Math.abs(d)===1?"":"s"} ${d>0?"above":"below"} ${ABBR[prev.m]}`;
+                : `${Math.abs(d)} percentage point${Math.abs(d)===1?"":"s"} ${d>0?"above":"below"} ${ABBR[prev.m]}`;
   const lead = `<p class="cmp-sub" style="margin:-4px 0 18px">
       <b>${ABBR[last.m]} ${last.y}</b> is running at <b>${last.st.pct}%</b> — ${verdict}.
       Best month so far: <b>${best}%</b>.</p>`;
@@ -1459,6 +1796,7 @@ function openCompare(){
 /* ============================================================
    ACTIONS
    ============================================================ */
+/** Straight pass <-> clear, without opening the picker. */
 function toggle(day, hid){
   const key = viewKey();
   setDone(key, day, hid, !isDone(key, day, hid));
@@ -1466,11 +1804,11 @@ function toggle(day, hid){
   render();
 }
 
-/** The big button: tick every habit for the day, or untick every habit. */
+/** The big button: pass every habit for the day, or clear every habit. */
 function toggleWholeDay(){
   const key = viewKey(), hs = md(key).habits;
   if(!hs.length) return;
-  const wasFull = dayDone(key, selDay) === hs.length;
+  const wasFull = dayFull(key, selDay);
   for(const h of hs) setDone(key, selDay, h.id, !wasFull);
   render();
   if(!wasFull){
@@ -1506,7 +1844,7 @@ function moveDay(delta){
    FILE SAVE / LOAD
    ============================================================ */
 function payload(){
-  return JSON.stringify({ app:"DHT", version:3, exported:new Date().toISOString(),
+  return JSON.stringify({ app:"DHT", version:4, exported:new Date().toISOString(),
                           weekStart:state.weekStart, quota:state.quota,
                           master:state.master, months:state.months }, null, 2);
 }
@@ -1576,13 +1914,18 @@ function mergeInto(base, inc){
   if(base.quota == null && typeof inc.quota === "number") base.quota = inc.quota;
   for(const k in (inc.months || {})){
     const from = inc.months[k];
-    if(!base.months[k]){ base.months[k] = { habits:from.habits||[], entries:from.entries||{} }; continue; }
+    /* normEntries here as well as in migrate(): merge is the one path a file of
+       any age can reach, and a union of two different shapes is a corrupt month */
+    const fe = normEntries(from.entries);
+    if(!base.months[k]){ base.months[k] = { habits:from.habits||[], entries:fe }; continue; }
     const cur = base.months[k];
+    cur.entries = normEntries(cur.entries);
     const have = new Set(cur.habits.map(h => h.id));
     for(const h of (from.habits || [])) if(!have.has(h.id)) cur.habits.push(h);
-    for(const day in (from.entries || {})){
-      const a = cur.entries[day] || (cur.entries[day] = []);
-      for(const id of from.entries[day]) if(a.indexOf(id) === -1) a.push(id);
+    for(const day in fe){
+      const a = cur.entries[day] || (cur.entries[day] = {});
+      /* union only ADDS — a mark already here wins, same as a tick always did */
+      for(const id in fe[day]) if(!a[id]) a[id] = fe[day][id];
     }
   }
   const have = new Set(base.master.map(h => h.id));
@@ -1593,7 +1936,7 @@ function mergeInto(base, inc){
 function applyImport(mode){
   const d = pendingImport; if(!d) return;
   if(mode === "replace"){
-    state = migrate({ version:3, weekStart:d.weekStart, quota:d.quota,
+    state = migrate({ version:4, weekStart:d.weekStart, quota:d.quota,
                       master:d.master, months:d.months });
   }else{
     mergeInto(state, d);
@@ -1839,10 +2182,13 @@ function disconnect(){
    HABITS EDITOR
    ============================================================ */
 let draft = null;
+/* habit ids whose state panel is expanded — by id, because indexes shift on reorder */
+let edOpen = new Set();
 
 function openEditor(){
   const key = viewKey(), forward = key >= nowKey();
   draft = md(key).habits.map(h => ({...h}));
+  edOpen = new Set();
   $("#edMonth").textContent = `${MONTHS[view.m]} ${view.y}`;
   $("#edNote").innerHTML = forward
     ? `Changes apply to <b>${MONTHS[view.m]} ${view.y}</b> and become the default for new months. Earlier months keep their own list and are untouched.`
@@ -1852,22 +2198,159 @@ function openEditor(){
 }
 
 function drawEditor(){
-  $("#edList").innerHTML = draft.map((h,i) => `
+  $("#edList").innerHTML = draft.map((h,i) => {
+    const n = habitStates(h).length, open = edOpen.has(h.id);
+    return `
     <div class="hedit" data-i="${i}">
       <button class="swatch" style="background:${hue(h.slot)}" data-act="color" title="Next colour"></button>
       <input type="text" value="${esc(h.name)}" data-act="name" placeholder="Habit name" maxlength="40">
+      <button class="mini wide${open?" on":""}" data-act="states"
+              title="Which states this habit uses, and what it calls them">${n} state${n===1?"":"s"}</button>
       <button class="mini" data-act="up"   title="Move up"   ${i===0?"disabled":""}>▲</button>
       <button class="mini" data-act="down" title="Move down" ${i===draft.length-1?"disabled":""}>▼</button>
       <button class="mini del" data-act="del" title="Remove">✕</button>
-    </div>`).join("") || `<div class="empty-note">No habits yet — add your first one below.</div>`;
+    </div>${open ? statePanel(h, i) : ""}`;
+  }).join("") || `<div class="empty-note">No habits yet — add your first one below.</div>`;
+}
+
+/** The expanded list of tiers for one habit: which are offered, and their names. */
+function statePanel(h, i){
+  const st = h.states || null, on = id => !st || (id in st);
+  return `<div class="stpanel" data-i="${i}">
+    <p class="stnote">Tick the states this habit uses and name them whatever suits it.
+       The points are fixed and shared, so every habit still adds up the same way.</p>
+    ${MARKS.map(m => `
+      <label class="stopt${on(m.id) ? "" : " off"}">
+        <input type="checkbox" data-act="stog" data-t="${m.id}" ${on(m.id) ? "checked" : ""}>
+        <i style="background:var(--mk-${m.id})"></i>
+        <input type="text" class="stlbl" data-act="stlbl" data-t="${m.id}" maxlength="40"
+               value="${esc(st && st[m.id] ? st[m.id] : "")}" placeholder="${esc(m.label)}"
+               ${on(m.id) ? "" : "disabled"}>
+        <span class="stpts">${m.pts > 0 ? "+" : ""}${m.pts}</span>
+      </label>`).join("")}
+    <div class="stpresets">
+      <button data-act="stall">All five</button>
+      <button data-act="stpf">Top and bottom only</button>
+    </div>
+  </div>`;
+}
+
+/** Start from this habit's map, or from a full one when it is still on the default. */
+function draftStates(h){
+  return h.states ? {...h.states} : Object.fromEntries(MARKS.map(m => [m.id, ""]));
+}
+
+/**
+ * Throw away a month entirely — marks, habit snapshot and all. Deleting the RECORD, not
+ * just its entries, is what makes the month read as never tracked: `md()` hands back a
+ * throwaway, `streak()` skips it and it disappears from `trackedMonths()` and the compare
+ * view. An emptied-but-present record would sit in both as a blank column.
+ */
+function clearMonth(){
+  const key = viewKey(), rec = state.months[key];
+  const days = rec ? Object.keys(rec.entries).length : 0;
+  if(!rec){ toast(`Nothing tracked in ${MONTHS[view.m]} ${view.y}`); return; }
+  if(!confirm(`Delete everything in ${MONTHS[view.m]} ${view.y}?\n\n${days} logged day${days===1?"":"s"} and this month's habit list will be removed, and the month will read as never tracked.\n\nThis cannot be undone.`)) return;
+  delete state.months[key];
+  save();
+  $("#editDlg").close();
+  render();
+  toast(`${MONTHS[view.m]} ${view.y} cleared`);
 }
 
 function commitDraft(){
   const key = viewKey();
-  const clean = draft.map(h => ({ id:h.id, name:(h.name||"").trim() || "Untitled", slot:h.slot }));
+  const clean = draft.map(h => {
+    const o = { id:h.id, name:(h.name||"").trim() || "Untitled", slot:h.slot };
+    const st = normStates(h.states);
+    if(st) o.states = st;
+    return o;
+  });
   materialize(key).habits = clean;
   if(key >= nowKey()) state.master = clean.map(h => ({...h}));
   save();
+  render();
+}
+
+/* ============================================================
+   MARK PICKER
+   Clicking a cell opens one shared popover rather than cycling the state or
+   planting a <select> in every cell: six states is too many to cycle blind, and
+   155 selects would wreck both the density of the sheet and the print layout.
+   `pick` is the only piece of picker state — renderSheet reads it to draw the
+   ring on the open cell, so a re-render never loses the popover's anchor.
+   ============================================================ */
+let pick = null;                       // { day, hid } while the popover is open
+
+/**
+ * The rows for one habit: the tiers it offers, plus Clear.
+ * Returns the markup and the ids in display order, because the number keys index
+ * into what is on screen — a two-state habit answers to 1 and 2, not 1 and 5.
+ */
+function pickerRows(hb, cur, missing){
+  const base = habitStates(hb);
+  let list = base;
+  /* a mark logged before this habit narrowed its list stays visible and editable */
+  if(cur && !base.some(m => m.id === cur)){
+    const extra = { ...MARK[cur], label:stateLabel(hb, cur) };
+    list = MARKS.filter(m => m.id === cur || base.some(x => x.id === m.id))
+                .map(m => (m.id === cur ? extra : base.find(x => x.id === m.id)));
+  }
+  const row = (id, label, p, swatch) =>
+    `<button class="pk${id ? "" : " clear"}" data-mark="${id}"${id === cur ? ' aria-current="true"' : ""}>
+       <i${swatch}></i><span class="pk-l">${esc(label)}</span>
+       <span class="pk-p">${p}</span></button>`;
+  /* leaving a closed day blank is not free, and the menu should not pretend it is */
+  return {
+    ids:  list.map(m => m.id).concat(""),
+    html: list.map(m => row(m.id, m.label, (m.pts > 0 ? "+" : "") + m.pts,
+                            ` style="background:var(--mk-${m.id})"`)).join("")
+          + row("", missing ? "Not marked — counts as a miss" : "Not marked",
+                    missing ? String(MARK.fail.pts) : "0", "")
+  };
+}
+
+/** Open the popover on one cell. Selecting the day first keeps the row highlight honest. */
+function openPicker(day, hid){
+  const key = viewKey(), hb = md(key).habits.find(h => h.id === hid);
+  if(!hb) return;
+  selDay = day;
+  const rows = pickerRows(hb, markOf(key, day, hid), missPts(missWindow(key), day) !== 0);
+  pick = { day, hid, ids:rows.ids };
+  $("#pkList").innerHTML = rows.html;
+  const el = $("#picker");
+  el.hidden = false;
+  render();                            // rebuilds the sheet, so anchor AFTER it
+  placePicker(el, $(`.cell[data-day="${day}"][data-h="${hid}"]`));
+  const first = el.querySelector(".pk[aria-current]") || el.querySelector(".pk");
+  if(first) first.focus();
+}
+
+function closePicker(){
+  if(!pick) return;
+  pick = null;
+  $("#picker").hidden = true;
+  render();
+}
+
+/** Anchor under the cell, flipping above and clamping inside the viewport. */
+function placePicker(el, at){
+  if(!at || !at.getBoundingClientRect) return;
+  const r = at.getBoundingClientRect(), pad = 8;
+  const w = el.offsetWidth || 236, h = el.offsetHeight || 240;
+  let y = r.bottom + 6;
+  if(y + h > window.innerHeight - pad) y = r.top - h - 6;
+  el.style.left = Math.max(pad, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - pad)) + "px";
+  el.style.top  = Math.max(pad, y) + "px";
+}
+
+/** Commit a choice. `mark` is a MARKS id, or "" to clear the cell. */
+function choosePick(mark){
+  if(!pick) return;
+  const { day, hid } = pick;
+  pick = null;
+  $("#picker").hidden = true;
+  setMark(viewKey(), day, hid, mark);
   render();
 }
 
@@ -1903,10 +2386,26 @@ $("#themeBtn").onclick = () => {
 
 $("#sheet").addEventListener("click", e => {
   const cell = e.target.closest(".cell");
-  if(cell){ toggle(+cell.dataset.day, cell.dataset.h); return; }
+  if(cell){
+    const day = +cell.dataset.day, hid = cell.dataset.h;
+    if(pick && pick.day === day && pick.hid === hid) closePicker();   // click again to dismiss
+    else openPicker(day, hid);
+    return;
+  }
   const row = e.target.closest("tr[data-day]");
-  if(row){ selDay = +row.dataset.day; render(); }
+  if(row){ closePicker(); selDay = +row.dataset.day; render(); }
 });
+
+$("#picker").addEventListener("click", e => {
+  const b = e.target.closest(".pk");
+  if(b) choosePick(b.dataset.mark);
+});
+/* anything outside the popover dismisses it; the sheet handles its own cells */
+document.addEventListener("mousedown", e => {
+  if(pick && !e.target.closest("#picker") && !e.target.closest(".cell")) closePicker();
+});
+window.addEventListener("resize", closePicker);
+$(".sheet-scroll").addEventListener("scroll", closePicker);
 
 /* ---------- sync dialog ---------- */
 function openSync(){
@@ -2022,18 +2521,11 @@ $("#segs").addEventListener("click", e => {
   const s = e.target.closest(".seg"); if(!s) return;
   const key = viewKey(), hs = md(key).habits;
   if(!hs.length) return;
+  /* the strip is the coarse control: it sets the day to N passes, nothing finer */
   const target = +s.dataset.i + 1;
-  const cur = dayDone(key, selDay);
-  const want = (target === cur) ? target - 1 : target;   // click the top filled segment to un-fill it
-  if(want > cur){
-    for(const h of hs){
-      if(dayDone(key, selDay) >= want) break;
-      if(!isDone(key, selDay, h.id)) setDone(key, selDay, h.id, true);
-    }
-  }else{
-    for(let i = hs.length - 1; i >= 0 && dayDone(key, selDay) > want; i--)
-      if(isDone(key, selDay, hs[i].id)) setDone(key, selDay, hs[i].id, false);
-  }
+  const lit  = Math.max(0, Math.min(hs.length, Math.round(dayDone(key, selDay))));
+  const want = (target === lit) ? target - 1 : target;   // click the top lit segment to un-fill it
+  for(let i = 0; i < hs.length; i++) setMark(key, selDay, hs[i].id, i < want ? "pass" : "");
   render();
 });
 
@@ -2045,22 +2537,49 @@ $("#edAdd").onclick = () => {
   if(inputs.length) inputs[inputs.length-1].focus();
   commitDraft();
 };
+$("#edClear").onclick = clearMonth;
+
 $("#edList").addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if(!b || b.tagName === "INPUT") return;
-  const i = +b.closest(".hedit").dataset.i, act = b.dataset.act;
-  if(act === "color") draft[i].slot = (draft[i].slot + 1) % 8;
+  const i = +b.closest("[data-i]").dataset.i, act = b.dataset.act;
+  if(act === "states"){                                   // open/close, nothing to save
+    const id = draft[i].id;
+    if(edOpen.has(id)) edOpen.delete(id); else edOpen.add(id);
+    drawEditor();
+    return;
+  }
+  if(act === "stall")      delete draft[i].states;        // back to all five, default names
+  else if(act === "stpf")  draft[i].states = { pass:"", fail:"" };
+  else if(act === "color") draft[i].slot = (draft[i].slot + 1) % 8;
   else if(act === "up"   && i > 0)              [draft[i-1],draft[i]] = [draft[i],draft[i-1]];
   else if(act === "down" && i < draft.length-1) [draft[i+1],draft[i]] = [draft[i],draft[i+1]];
   else if(act === "del"){
-    if(!confirm(`Remove "${draft[i].name || "this habit"}" from ${MONTHS[view.m]} ${view.y}?\n\nIts ticks are kept, so re-adding it restores them.`)) return;
+    if(!confirm(`Remove "${draft[i].name || "this habit"}" from ${MONTHS[view.m]} ${view.y}?\n\nIts marks are kept, so re-adding it restores them.`)) return;
     draft.splice(i,1);
   }
   drawEditor(); commitDraft();
 });
 $("#edList").addEventListener("input", e => {
-  const inp = e.target.closest('input[data-act="name"]'); if(!inp) return;
-  draft[+inp.closest(".hedit").dataset.i].name = inp.value;
-  commitDraft();
+  const inp = e.target.closest("input[data-act]"); if(!inp) return;
+  const h = draft[+inp.closest("[data-i]").dataset.i];
+  if(inp.dataset.act === "name") h.name = inp.value;
+  else if(inp.dataset.act === "stlbl"){
+    const st = draftStates(h);
+    st[inp.dataset.t] = inp.value;
+    h.states = st;
+  }else return;
+  commitDraft();                       // no redraw, so the caret stays where it is
+});
+
+/* a checkbox never holds a caret, so a toggle can redraw and refresh the count */
+$("#edList").addEventListener("change", e => {
+  const cb = e.target.closest('input[data-act="stog"]'); if(!cb) return;
+  const h = draft[+cb.closest("[data-i]").dataset.i], st = draftStates(h);
+  if(cb.checked) st[cb.dataset.t] = st[cb.dataset.t] || "";
+  else delete st[cb.dataset.t];
+  if(!Object.keys(st).length){ cb.checked = true; return; }   // one has to stay
+  h.states = st;
+  drawEditor(); commitDraft();
 });
 
 /* dialogs */
@@ -2074,6 +2593,27 @@ $("#loadDlg").addEventListener("close", () => { pendingImport = null; });
 
 /* keyboard */
 document.addEventListener("keydown", e => {
+  /* the popover owns the keyboard while it is open: 1-5 pick, 0 clears */
+  if(pick){
+    if(e.key === "Escape"){ e.preventDefault(); closePicker(); return; }
+    if(/^[1-9]$/.test(e.key)){
+      e.preventDefault();
+      const id = pick.ids[+e.key - 1];
+      if(id !== undefined) choosePick(id);
+      return;
+    }
+    if(e.key === "0" || e.key === "Backspace" || e.key === "Delete"){
+      e.preventDefault(); choosePick(""); return;
+    }
+    if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+      e.preventDefault();
+      const all = [...$("#picker").querySelectorAll(".pk")];
+      const i = all.indexOf(document.activeElement);
+      const j = (i + (e.key === "ArrowDown" ? 1 : all.length - 1) + all.length) % all.length;
+      if(all[j]) all[j].focus();
+    }
+    return;                                          // swallow everything else
+  }
   if(document.querySelector("dialog[open]")) return;
   const tag = (e.target.tagName || "").toLowerCase();
   if(tag === "input" || tag === "textarea") return;
@@ -2084,7 +2624,7 @@ document.addEventListener("keydown", e => {
   const hs = md(viewKey()).habits;
   if(/^[1-9]$/.test(e.key)){
     const h = hs[+e.key - 1];
-    if(h){ e.preventDefault(); toggle(selDay, h.id); }
+    if(h){ e.preventDefault(); openPicker(selDay, h.id); }   // then 1-5 / 0 picks the state
     return;
   }
   switch(e.key){
