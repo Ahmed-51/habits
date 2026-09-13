@@ -30,12 +30,15 @@
   --good:hsl(140 76% 55%);          /* the full-battery green */
   /* Mark scale — a status ramp, not a series. Three greens step DOWN toward the
      surface as the state weakens, exactly like HEAT; the two reds are a pair,
-     pale for a late-but-logged kaja, loud for an outright fail. */
+     pale for a late-but-logged kaja, loud for an outright fail. `na` sits OUTSIDE
+     the ramp on purpose - a neutral slate, because it is neither credit nor debit
+     and must not read as a weak green or a soft red. */
   --mk-pass:#3fb950;
   --mk-home:#238636;
   --mk-before:#14532a;
   --mk-kaja:#7f3a3a;
   --mk-fail:#f85149;
+  --mk-na:#5b6577;
   --shadow:0 8px 28px rgba(0,0,0,.45);
   --radius:14px;
 }
@@ -58,6 +61,7 @@
   --mk-before:#9be9a8;
   --mk-kaja:#ffb1ab;
   --mk-fail:#cf222e;
+  --mk-na:#a9b1c1;
   --shadow:0 6px 22px rgba(20,25,40,.10);
 }
 
@@ -194,6 +198,7 @@ tbody tr.sel td.c-day::before{content:"";position:absolute;left:0;top:0;bottom:0
 .cell[data-m="before"]::after{background:var(--mk-before);border-color:var(--mk-before)}
 .cell[data-m="kaja"]::after  {background:var(--mk-kaja);  border-color:var(--mk-kaja)}
 .cell[data-m="fail"]::after  {background:var(--mk-fail);  border-color:var(--mk-fail)}
+.cell[data-m="na"]::after    {background:var(--mk-na);    border-color:var(--mk-na)}
 .cell.picking::after{box-shadow:0 0 0 2px var(--accent)}
 
 .daybar{width:48px;height:6px;border-radius:3px;background:var(--empty);overflow:hidden;margin:0 auto}
@@ -391,7 +396,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .hedit .mini.wide{width:auto;padding:0 9px;font-size:11px;white-space:nowrap}
 .hedit .mini.wide.on{border-color:var(--accent);color:var(--txt);background:var(--panel-2)}
 
-/* which of the five a habit offers, and what it calls them */
+/* which of the six a habit offers, and what it calls them */
 .stpanel{margin:0 0 10px 34px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2)}
 .stnote{margin:0 0 9px;font-size:11.5px;color:var(--dim);line-height:1.5}
 .stopt{display:flex;align-items:center;gap:9px;padding:4px 0;cursor:pointer}
@@ -522,6 +527,7 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
     --bg:#fff;--panel:#fff;--panel-2:#fafafa;--line:#c9ced8;--line-soft:#e4e7ec;
     --txt:#000;--dim:#4a5160;--dimmer:#8d94a2;--empty:#e9ecf1;--grid:#e1e0d9;--shadow:none;
     --mk-pass:#216e39;--mk-home:#40c463;--mk-before:#9be9a8;--mk-kaja:#ffb1ab;--mk-fail:#cf222e;
+    --mk-na:#b8bec9;
   }
   html,body{background:#fff !important;color:#000 !important}
   *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
@@ -864,7 +870,7 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
   <div class="dlg-body">
     <div class="klist">
       <kbd>1</kbd><span>…<kbd>9</kbd> — open the state picker for that habit on the selected day</span>
-      <kbd>1</kbd><span>…<kbd>5</kbd> — <i>with the picker open</i>, choose the option in that position &nbsp;•&nbsp; <kbd>0</kbd> clears it</span>
+      <kbd>1</kbd><span>…<kbd>6</kbd> — <i>with the picker open</i>, choose the option in that position &nbsp;•&nbsp; <kbd>0</kbd> clears it</span>
       <kbd>Enter</kbd><span>Pass every habit for the day — or clear it if already full</span>
       <kbd>↑</kbd><span><kbd>↓</kbd> — move the selected day</span>
       <kbd>PgUp</kbd><span><kbd>PgDn</kbd> — previous / next month</span>
@@ -874,7 +880,7 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
     <p class="note" style="margin-top:16px">
       <b>The scoring tiers.</b> Every cell holds one of them and the colour is the whole
       readout — there is no tick and no letter, and habits are not colour-coded against
-      each other. Greens are credit, reds are not. The names below are only the
+      each other. Greens are credit, reds are not, and the slate one is neither. The names below are only the
       <i>defaults</i>: in <b>⚙ Habits</b> each habit can rename every tier and drop the ones
       it does not need, down to two. The points never move, so however you name them,
       everything still adds up together.
@@ -885,11 +891,20 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
       <i style="background:var(--mk-before)"></i><b>Inside Wakt</b><span>+0.25</span>
       <i style="background:var(--mk-kaja)"></i><b>Kaja</b><span>+0.1</span>
       <i style="background:var(--mk-fail)"></i><b>Failed</b><span>-0.25</span>
+      <i style="background:var(--mk-na)"></i><b>Not applicable</b><span>0</span>
       <i style="background:var(--empty)"></i><b>Not marked</b><span>0</span>
     </div>
     <p class="note">
+      <b>Not applicable vs. not marked.</b> They score the same zero only while a day is
+      still open. Once a day is over, leaving a cell blank costs you a miss — the app
+      cannot tell that apart from deciding you failed. <b>Not applicable</b> is how you
+      say the habit could not apply that day: it is a real mark, so it holds the cell at
+      zero and no miss is charged. It still counts as one of the day's possible points,
+      so a day of them reads as 0%, not as a skipped day.
+    </p>
+    <p class="note">
       <b>Setting one.</b> Click a cell and pick from the menu, or press <kbd>1</kbd>–<kbd>9</kbd>
-      for the habit then <kbd>1</kbd>–<kbd>5</kbd> for the state. A battery segment sets the
+      for the habit then <kbd>1</kbd>–<kbd>6</kbd> for the state. A battery segment sets the
       day to that many passes (clicking the topmost lit one un-fills it), and the big button
       passes or clears the whole day.
     </p>
@@ -966,7 +981,7 @@ const HEAT = {
 };
 
 /* ------------------------------------------------------------
-   MARKS - the five scoring tiers, in menu order.
+   MARKS - the six scoring tiers, in menu order.
 
    THE POINTS ARE THE IDENTITY. `id` is a frozen storage key and `label` is only
    a DEFAULT name: any habit may rename a tier, or leave it out of its list
@@ -978,13 +993,24 @@ const HEAT = {
    `pass` is worth exactly 1 and an unmarked cell 0, which is what makes an
    older file readable: a v3 tick migrates to "pass" and the month scores the
    number it always scored. Never renumber `pass` away from 1.
+
+   `na` is the odd one out and goes LAST rather than in point order. Two reasons.
+   It is not a grade - it says the habit did not apply that day - so sorting it
+   between "Kaja" and "Failed" would read as a middling result. And appending it
+   leaves the five existing tiers on the number keys they have always answered to,
+   so nobody's muscle memory moves.
+
+   An unmarked cell inside the tracking window is NOT worth zero - it costs a miss
+   (see `missWindow`). `na` is the only way to say "this day cost me nothing",
+   which is the whole reason it exists.
    ------------------------------------------------------------ */
 const MARKS = [
-  { id:"pass",   label:"In Jamah",    pts:1    },
-  { id:"home",   label:"At Home",     pts:0.5  },
-  { id:"before", label:"Inside Wakt", pts:0.25 },
-  { id:"kaja",   label:"Kaja",        pts:0.1  },
-  { id:"fail",   label:"Failed",      pts:-0.25 }
+  { id:"pass",   label:"In Jamah",       pts:1    },
+  { id:"home",   label:"At Home",        pts:0.5  },
+  { id:"before", label:"Inside Wakt",    pts:0.25 },
+  { id:"kaja",   label:"Kaja",           pts:0.1  },
+  { id:"fail",   label:"Failed",         pts:-0.25 },
+  { id:"na",     label:"Not applicable", pts:0    }
 ];
 const MARK = {};
 for(const m of MARKS) MARK[m.id] = m;
@@ -1017,7 +1043,7 @@ function uid(){ return "h" + Math.random().toString(36).slice(2,9); }
    A habit may carry `states`: a map of tier id -> label, where "" means "keep
    the default name" and a tier that is ABSENT is simply not offered on that
    habit. Order is never stored; MARKS defines it. No `states` at all means all
-   five under their default names, which is what every habit starts as. */
+   six under their default names, which is what every habit starts as. */
 
 /** Clean a `states` map, or return null when it just means "the default". */
 function normStates(st){
@@ -1050,7 +1076,7 @@ function stateLabel(h, id){
 }
 
 function seed(){
-  return { version:4, weekStart:1, quota:null, master:[
+  return { version:5, weekStart:1, quota:null, master:[
     { id:uid(), name:"Exercise",    slot:0 },
     { id:uid(), name:"Read",        slot:1 },
     { id:uid(), name:"Deep work",   slot:2 },
@@ -1083,6 +1109,13 @@ function normEntries(entries){
  * v2 → v3: added the weekly quota + week-start day.
  * v3 → v4: a day went from an array of ticked ids to a map of id → mark, every tick
  *          becoming `pass`.
+ * v4 → v5: the `na` tier was added, so every habit that had already NARROWED its state
+ *          list is offered the new one. A habit on the defaults needs nothing — it
+ *          stores no `states` map and picks up all six automatically.
+ *
+ * That backfill is gated on the incoming version for a reason: it must run once, on a
+ * file written before `na` existed. Running it unconditionally would undo the choice of
+ * any habit that is later told not to offer `na`, because migrate() runs on every load.
  * Idempotent — it runs on every load, every import and every remote pull.
  *
  * An old file's BLANKS are not rewritten here. They do not need to be: a blank inside the
@@ -1092,13 +1125,21 @@ function normEntries(entries){
  * gave old and new data two different rules. One computed rule replaces it.
  */
 function migrate(s){
+  const preNa = (+s.version || 0) < 5;              // written before `na` existed
   const fix = list => (list || []).forEach((h,i) => {
     if(typeof h.slot !== "number"){
       const old = LEGACY.indexOf(h.color);
       h.slot = (old >= 0 ? old : i) % 8;
     }
     delete h.color;
-    const st = normStates(h.states);
+    let st = normStates(h.states);
+    /* a habit that had already NARROWED its list is offered the new tier as well. This
+       runs after the clean, not before it, so an empty or junk map is still dropped
+       rather than resurrected as a habit whose only choice is `na`. Feeding the result
+       back through normStates matters too: a map that listed all five old tiers under
+       their default names becomes all six under theirs, which IS the default, and
+       collapses back to storing nothing. */
+    if(st && preNa && !("na" in st)) st = normStates({ ...st, na:"" });
     if(st) h.states = st; else delete h.states;
   });
   fix(s.master);
@@ -1108,7 +1149,7 @@ function migrate(s){
   }
   if(s.weekStart !== 0 && s.weekStart !== 1) s.weekStart = 1;      // default Monday
   if(typeof s.quota !== "number" || s.quota <= 0) s.quota = null;  // null = auto (80%)
-  s.version = 4;
+  s.version = 5;
   return s;
 }
 
@@ -1846,7 +1887,7 @@ function moveDay(delta){
    FILE SAVE / LOAD
    ============================================================ */
 function payload(){
-  return JSON.stringify({ app:"DHT", version:4, exported:new Date().toISOString(),
+  return JSON.stringify({ app:"DHT", version:5, exported:new Date().toISOString(),
                           weekStart:state.weekStart, quota:state.quota,
                           master:state.master, months:state.months }, null, 2);
 }
@@ -1938,7 +1979,9 @@ function mergeInto(base, inc){
 function applyImport(mode){
   const d = pendingImport; if(!d) return;
   if(mode === "replace"){
-    state = migrate({ version:4, weekStart:d.weekStart, quota:d.quota,
+    /* carry the file's OWN version: migrate() keys the `na` backfill off it, and
+       hardcoding a number here would re-run that backfill on an up-to-date file */
+    state = migrate({ version:(+d.version || 4), weekStart:d.weekStart, quota:d.quota,
                       master:d.master, months:d.months });
   }else{
     mergeInto(state, d);
@@ -2220,7 +2263,9 @@ function statePanel(h, i){
   const st = h.states || null, on = id => !st || (id in st);
   return `<div class="stpanel" data-i="${i}">
     <p class="stnote">Tick the states this habit uses and name them whatever suits it.
-       The points are fixed and shared, so every habit still adds up the same way.</p>
+       The points are fixed and shared, so every habit still adds up the same way.
+       <b>Not applicable</b> is the zero: use it on a day the habit could not apply, and
+       it costs nothing instead of counting as a miss.</p>
     ${MARKS.map(m => `
       <label class="stopt${on(m.id) ? "" : " off"}">
         <input type="checkbox" data-act="stog" data-t="${m.id}" ${on(m.id) ? "checked" : ""}>
@@ -2231,7 +2276,7 @@ function statePanel(h, i){
         <span class="stpts">${m.pts > 0 ? "+" : ""}${m.pts}</span>
       </label>`).join("")}
     <div class="stpresets">
-      <button data-act="stall">All five</button>
+      <button data-act="stall">All six</button>
       <button data-act="stpf">Top and bottom only</button>
     </div>
   </div>`;
@@ -2277,7 +2322,7 @@ function commitDraft(){
 /* ============================================================
    MARK PICKER
    Clicking a cell opens one shared popover rather than cycling the state or
-   planting a <select> in every cell: six states is too many to cycle blind, and
+   planting a <select> in every cell: seven choices are too many to cycle blind, and
    155 selects would wreck both the density of the sheet and the print layout.
    `pick` is the only piece of picker state — renderSheet reads it to draw the
    ring on the open cell, so a re-render never loses the popover's anchor.
@@ -2550,7 +2595,7 @@ $("#edList").addEventListener("click", e => {
     drawEditor();
     return;
   }
-  if(act === "stall")      delete draft[i].states;        // back to all five, default names
+  if(act === "stall")      delete draft[i].states;        // back to all six, default names
   else if(act === "stpf")  draft[i].states = { pass:"", fail:"" };
   else if(act === "color") draft[i].slot = (draft[i].slot + 1) % 8;
   else if(act === "up"   && i > 0)              [draft[i-1],draft[i]] = [draft[i],draft[i-1]];
@@ -2595,7 +2640,7 @@ $("#loadDlg").addEventListener("close", () => { pendingImport = null; });
 
 /* keyboard */
 document.addEventListener("keydown", e => {
-  /* the popover owns the keyboard while it is open: 1-5 pick, 0 clears */
+  /* the popover owns the keyboard while it is open: 1-6 pick, 0 clears */
   if(pick){
     if(e.key === "Escape"){ e.preventDefault(); closePicker(); return; }
     if(/^[1-9]$/.test(e.key)){
@@ -2626,7 +2671,7 @@ document.addEventListener("keydown", e => {
   const hs = md(viewKey()).habits;
   if(/^[1-9]$/.test(e.key)){
     const h = hs[+e.key - 1];
-    if(h){ e.preventDefault(); openPicker(selDay, h.id); }   // then 1-5 / 0 picks the state
+    if(h){ e.preventDefault(); openPicker(selDay, h.id); }   // then 1-6 / 0 picks the state
     return;
   }
   switch(e.key){
