@@ -5,15 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Daily Habit Tracker</title>
 
-<!-- Tab icon: the app's own battery, two segments of three, as an inline SVG data URI.
-     SEGMENTS rather than a fill level, because that is what the real battery does — one
-     bar per habit, filled bottom-up — so the icon is the UI in miniature instead of a
-     generic battery. The body is 15x25.5, a ratio of 0.59. An earlier version was 22x24,
-     square enough that the wide neck on top read as a bottle rather than a cell.
-     Inline because the file must stay self-contained and fetch nothing — a separate
-     favicon.ico would 404 from file:// and add a request on Pages. SVG stays sharp at
-     any tab size and on a hi-dpi screen, where a 16px .ico goes mushy. -->
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27><rect x=%2712%27 y=%272%27 width=%278%27 height=%273%27 rx=%271.25%27 fill=%27%232fd46e%27/><rect x=%279.75%27 y=%276%27 width=%2712.5%27 height=%2723%27 rx=%273%27 fill=%27none%27 stroke=%27%232fd46e%27 stroke-width=%272.5%27/><rect x=%2712.25%27 y=%278.5%27 width=%277.5%27 height=%274.4%27 rx=%271.2%27 fill=%27%232fd46e%27 opacity=%27.26%27/><rect x=%2712.25%27 y=%2715.3%27 width=%277.5%27 height=%274.4%27 rx=%271.2%27 fill=%27%232fd46e%27/><rect x=%2712.25%27 y=%2722.1%27 width=%277.5%27 height=%274.4%27 rx=%271.2%27 fill=%27%232fd46e%27/></svg>">
+<!-- Tab icon: three days on a route - one kept, today ringed, one still ahead.
+     The same three states the sheet itself draws, which is why it is this and not a
+     generic mark. Inline as a data URI because the file must stay self-contained and
+     fetch nothing: a separate favicon.ico would 404 from file:// and add a request on
+     Pages, and SVG stays sharp where a 16px .ico goes mushy. -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27 fill=%27none%27><path d=%27M14.5 33.5 18 30%27 stroke=%27%232fd46e%27 stroke-width=%273.5%27 stroke-linecap=%27round%27 opacity=%27.45%27/><path d=%27M30 18 33.5 14.5%27 stroke=%27%232fd46e%27 stroke-width=%273.5%27 stroke-linecap=%27round%27 opacity=%27.45%27/><circle cx=%2710%27 cy=%2738%27 r=%275%27 fill=%27%232fd46e%27/><circle cx=%2724%27 cy=%2724%27 r=%277.5%27 stroke=%27%232fd46e%27 stroke-width=%273.5%27/><circle cx=%2724%27 cy=%2724%27 r=%273%27 fill=%27%232fd46e%27/><circle cx=%2738%27 cy=%2710%27 r=%275%27 stroke=%27%232fd46e%27 stroke-width=%273.5%27 opacity=%27.55%27/></svg>">
 <meta name="theme-color" content="#2fd46e">
 <style>
 /* ============================================================
