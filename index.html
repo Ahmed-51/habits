@@ -918,8 +918,8 @@ table.cmp tr.cur td.rh::after{content:" ·";color:var(--accent)}
       <b>The weekly target.</b> The battery is always today — that doesn't change. The week
       card underneath counts every point across the whole week against one target, so a bad
       Tuesday doesn't write off the week: a strong Saturday can still cover it. Click the
-      target number to change it, or the date range to switch between Monday and Sunday
-      starts. Weeks spanning two months are handled; each day counts against its own month's
+      target number to change it, or the date range to cycle the week start between
+      Saturday, Sunday and Monday. Weeks spanning two months are handled; each day counts against its own month's
       habit list.
     </p>
     <p class="note">
@@ -1026,6 +1026,8 @@ const fmtP = n => String(r2(n));
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const ABBR   = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DOW    = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+/** Allowed week-start days (Date.getDay() numbers); clicking the range cycles Sat → Sun → Mon. */
+const WEEK_STARTS = { 6:{ name:"Saturday", next:0 }, 0:{ name:"Sunday", next:1 }, 1:{ name:"Monday", next:6 } };
 
 const $ = s => document.querySelector(s);
 
@@ -1077,7 +1079,7 @@ function stateLabel(h, id){
 }
 
 function seed(){
-  return { version:5, weekStart:1, quota:null, master:[
+  return { version:5, weekStart:6, quota:null, master:[
     { id:uid(), name:"Exercise",    slot:0 },
     { id:uid(), name:"Read",        slot:1 },
     { id:uid(), name:"Deep work",   slot:2 },
@@ -1148,7 +1150,7 @@ function migrate(s){
     fix(s.months[k].habits);
     s.months[k].entries = normEntries(s.months[k].entries);
   }
-  if(s.weekStart !== 0 && s.weekStart !== 1) s.weekStart = 1;      // default Monday
+  if(typeof s.weekStart !== "number" || !WEEK_STARTS[s.weekStart]) s.weekStart = 6; // default Saturday
   if(typeof s.quota !== "number" || s.quota <= 0) s.quota = null;  // null = auto (80%)
   s.version = 5;
   return s;
@@ -2559,9 +2561,9 @@ $("#wkQuota").addEventListener("input", e => {
   save(); render();
 });
 $("#wkRange").onclick = () => {
-  state.weekStart = state.weekStart === 1 ? 0 : 1;
+  state.weekStart = WEEK_STARTS[state.weekStart].next;
   save(); render();
-  toast(state.weekStart === 1 ? "Weeks start on Monday" : "Weeks start on Sunday");
+  toast(`Weeks start on ${WEEK_STARTS[state.weekStart].name}`);
 };
 
 /* battery segments stay the one-at-a-time control */
